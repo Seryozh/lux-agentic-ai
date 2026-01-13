@@ -11,6 +11,7 @@
 resume.*
 RESUME.*
 *.pdf
+linkedin-content.md
 
 # System files
 .DS_Store
