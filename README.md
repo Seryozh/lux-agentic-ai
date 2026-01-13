@@ -2,7 +2,7 @@
 
 > **Agentic AI coding assistant for Roblox Studio**
 
-Lux is a production-ready AI plugin that reads your Roblox project, understands your architecture, and makes code changes through natural conversation. Unlike traditional AI chatbots, Lux operates directly inside Studio with full awareness of your scripts, instances, and structure
+Lux is a production-ready AI plugin that reads your Roblox project, understands your architecture, and makes code changes through natural conversation. Unlike traditional AI chatbots, Lux operates directly inside Studio with full awareness of your scripts, instances, and structure..
 
 ![Lux in Studio](https://devforum-uploads.s3.dualstack.us-east-2.amazonaws.com/uploads/original/5X/a/w/b/v/awBvu9IddL4clqNS2jxJInvmxK.jpeg)
 
