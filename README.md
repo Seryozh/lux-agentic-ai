@@ -283,13 +283,17 @@ A: Unified billing, transparent pricing, no vendor lock-in. You can add multiple
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/lux/issues)
+- **Issues**: [GitHub Issues](https://github.com/skudeleenxyz/lux/issues)
 - **DevForum**: [Lux Discussion Thread](https://devforum.roblox.com/t/lux-cursorclaude-code-but-for-roblox-free-plugin/4207506)
 - **Documentation**: See this README and inline code comments
 
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
+
+## Author
+
+**Sergey Kudelin** - [GitHub](https://github.com/skudeleenxyz) • [DevForum](https://devforum.roblox.com/u/conquerfears)
 
 ## Acknowledgments
 

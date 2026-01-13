@@ -227,7 +227,7 @@ end
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/lux.git
+git clone https://github.com/skudeleenxyz/lux.git
 cd lux
 
 # Install in Roblox Studio
@@ -293,7 +293,7 @@ Fixes #123
 ## Questions?
 
 - **General questions**: [DevForum Thread](https://devforum.roblox.com/t/lux-cursorclaude-code-but-for-roblox-free-plugin/4207506)
-- **Bug reports**: [GitHub Issues](https://github.com/yourusername/lux/issues)
-- **Feature discussions**: [GitHub Discussions](https://github.com/yourusername/lux/discussions)
+- **Bug reports**: [GitHub Issues](https://github.com/skudeleenxyz/lux/issues)
+- **Feature discussions**: [GitHub Discussions](https://github.com/skudeleenxyz/lux/discussions)
 
 Thank you for contributing to Lux! 🚀

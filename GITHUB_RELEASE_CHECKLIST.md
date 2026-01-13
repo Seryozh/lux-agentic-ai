@@ -25,16 +25,11 @@ git status
 # Should NOT see .claude/ in the list
 ```
 
-### 2. Update GitHub URLs in Documentation
-Search and replace `yourusername/lux` with your actual GitHub username:
-- README.md (multiple locations)
-- CONTRIBUTING.md
-- CHANGELOG.md
-
-```bash
-# Example:
-find . -name "*.md" -type f -exec sed -i '' 's/yourusername/YOUR_GITHUB_USERNAME/g' {} +
-```
+### 2. ✅ GitHub URLs Updated
+All documentation files now use `skudeleenxyz/lux`:
+- [x] README.md
+- [x] CONTRIBUTING.md
+- [x] CHANGELOG.md
 
 ### 3. Verify No Secrets
 ```bash
@@ -87,7 +82,7 @@ git status
 git commit -m "Initial release: v4.0.0 - Self-Healing"
 
 # Add remote
-git remote add origin https://github.com/YOUR_USERNAME/lux.git
+git remote add origin https://github.com/skudeleenxyz/lux.git
 
 # Push to GitHub
 git branch -M main
