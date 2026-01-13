@@ -14,13 +14,13 @@ Lux is a production-ready AI plugin that reads your Roblox project, understands 
 - **Self-correcting** - Verifies results and fixes its own mistakes
 - **Tool calling loop** - Up to 50 iterations per request with full transparency
 
-### Safety & Reliability (v4.0)
-- **Self-healing** - Auto-retries transient failures with exponential backoff (60-80% invisible recovery)
+### Safety & Reliability
+- **Self-healing** - Auto-retries transient failures with exponential backoff
 - **Zero context loss** - Multi-strategy compression preserves conversation history
 - **Human-in-the-loop** - Every destructive action requires explicit approval
 - **Undo support** - Full integration with Studio's ChangeHistoryService
 
-### Intelligence Modules (v2.0)
+### Intelligence Modules
 - **Task Planner** - Complexity-aware planning with self-reflection
 - **Context Selector** - Relevance scoring to reduce token waste
 - **Error Analyzer** - Classifies failures and suggests recovery strategies
@@ -90,21 +90,21 @@ Lux/
     ├── Tools.lua               # Tool implementations
     ├── Constants.lua           # Configuration
     │
-    ├── Intelligence Modules (v2.0)
+    ├── Intelligence Modules
     ├── TaskPlanner.lua         # Multi-step task planning
     ├── ContextSelector.lua     # Relevance-based script filtering
     ├── ErrorAnalyzer.lua       # Failure classification
     ├── DecisionMemory.lua      # Pattern learning
     ├── Verification.lua        # Result validation
     │
-    ├── Safety Modules (v3.0)
+    ├── Safety Modules
     ├── CircuitBreaker.lua      # Failure spiral prevention
     ├── OutputValidator.lua     # Hallucination detection
     ├── ErrorPredictor.lua      # Pre-flight checks
     ├── WorkingMemory.lua       # Context management
     ├── SessionManager.lua      # Lifecycle coordination
     │
-    ├── Resilience Layer (v4.0)
+    ├── Resilience Layer
     ├── ToolResilience.lua      # Auto-retry with health monitoring
     ├── CompressionFallback.lua # Multi-strategy context compression
     │
@@ -180,7 +180,7 @@ Constants.CIRCUIT_BREAKER = { failureThreshold = 5, cooldownPeriod = 30 }
 Constants.OUTPUT_VALIDATOR = { checkPathExists = true, checkPlaceholders = true }
 Constants.ERROR_PREDICTOR = { staleThresholdSeconds = 120 }
 
--- Resilience (v4.0)
+-- Resilience
 Constants.RESILIENCE = {
     maxRetries = 2,
     retryBackoffMs = {100, 500, 1000},
@@ -239,30 +239,11 @@ Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 ## Changelog
 
 ### v4.0 - Self-Healing Release (2026-01-10)
-- Auto-retry with exponential backoff (60-80% invisible failure recovery)
+- Auto-retry with exponential backoff
 - State synchronization detection
 - Zero context loss compression with multi-strategy fallback
 - Health monitoring and metrics API
 - Context reset confirmation dialog
-
-### v2.0.3 - Anti-Destructive Intelligence (2024)
-- Mandatory freshness checks before edits
-- Prefer surgical edits (>95% similarity threshold)
-- Deletion preview warnings
-- Change impact analysis
-
-### v2.0.0 - Safety & Resilience (2024)
-- Circuit breaker for failure spiral prevention
-- Output validator for hallucination detection
-- Error predictor with pre-flight checks
-- Working memory with relevance decay
-- Session manager for lifecycle coordination
-
-### v1.1.2 - Agent Intelligence (2024)
-- Task planner with complexity analysis
-- Context selector with relevance scoring
-- Error analyzer with classification
-- Decision memory with pattern learning
 
 ## FAQ
 
@@ -276,7 +257,7 @@ A: Every change creates an undo point. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> to rev
 A: Currently Gemini 3 Flash/Pro only. Model abstraction planned for future releases.
 
 **Q: How does it compare to Roblox Assistant?**
-A: Both are agentic, but Lux uses frontier models (Gemini 3 Pro) with 65K token output and native reasoning. Different approaches to the same goal.
+A: Both are agentic AI assistants. Lux uses Gemini 3 models via OpenRouter with large context windows.
 
 **Q: Why OpenRouter instead of direct API?**
 A: Unified billing, transparent pricing, no vendor lock-in. You can add multiple model providers to your OpenRouter account.
