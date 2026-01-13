@@ -1,0 +1,22 @@
+# Roblox Studio
+*.rbxl
+*.rbxm
+*.rbxlx
+*.rbxmx
+
+# Internal documentation
+.claude/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
