@@ -234,7 +234,7 @@ See [Architecture](#architecture) section above.
 
 ### Contributing
 
-Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Contributions welcome! Please open an issue or pull request.
 
 ## Changelog
 
