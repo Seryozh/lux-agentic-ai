@@ -6,26 +6,22 @@ A Roblox AI agent system with memory, planning, and tool execution capabilities.
 
 This project uses Rojo to sync code into Roblox Studio.
 
-### Installation
-
-1. Install the Rojo VS Code extension from the marketplace: [Rojo - Roblox Studio Sync](https://marketplace.visualstudio.com/items?itemName=evaera.vscode-rojo)
-2. The extension will automatically manage the Rojo server for you
-
 ### Usage
 
-1. **Open the project in VS Code:**
-   - Open this folder in VS Code
-   - The Rojo extension will detect the `default.project.json` file
+The Rojo binary is included in the `Rojo/` folder. To start syncing:
 
-2. **Start syncing:**
-   - Open the Command Palette (Ctrl/Cmd+Shift+P)
-   - Run "Rojo: Start server"
-   - Or click the "Start Rojo" button in the status bar
+1. **Start the Rojo server:**
+   ```bash
+   ./Rojo/rojo serve
+   ```
 
-3. **Connect from Roblox Studio:**
+   The server will start on `localhost:34872`
+
+2. **Connect from Roblox Studio:**
    - Open your place in Roblox Studio
-   - Install the Rojo Studio plugin if you haven't already
+   - Install the Rojo Studio plugin: https://www.roblox.com/library/13916111004/Rojo-7-4
    - Click the Rojo plugin button and click "Connect"
+   - Your code will now sync automatically!
 
 3. **Your project structure in Studio:**
    ```

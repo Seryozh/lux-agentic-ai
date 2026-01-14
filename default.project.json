@@ -4,7 +4,7 @@
     "$className": "DataModel",
     "ServerStorage": {
       "$className": "ServerStorage",
-      "LuxAgenticAI": {
+      "Lux": {
         "$path": "src"
       },
       "Main": {
