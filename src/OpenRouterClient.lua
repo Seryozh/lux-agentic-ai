@@ -16,7 +16,7 @@ local HttpService = game:GetService("HttpService")
 local Constants = require(script.Parent.Shared.Constants)
 local Utils = require(script.Parent.Shared.Utils)
 local IndexManager = require(script.Parent.Shared.IndexManager)
-local Tools = require(script.Parent.Tools)
+local Tools = require(script.Parent.Tools.init)
 local ProjectContext = require(script.Parent.Memory.ProjectContext)
 
 -- Load system prompt and tool definitions from separate modules

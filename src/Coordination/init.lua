@@ -5,7 +5,7 @@
 
 -- Export modules from Coordination folder
 local Coordination = {
-	Session = require(script.SessionManager),
+	Session = require(script.Parent.SessionManager),
 }
 
 return Coordination

@@ -5,8 +5,8 @@
 
 -- Export modules from Planning folder
 local Planning = {
-	TaskPlanner = require(script.TaskPlanner),
-	Verification = require(script.Verification),
+	TaskPlanner = require(script.Parent.TaskPlanner),
+	Verification = require(script.Parent.Verification),
 }
 
 return Planning

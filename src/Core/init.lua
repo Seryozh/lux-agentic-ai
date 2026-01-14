@@ -10,8 +10,8 @@
 ]]
 
 return {
-	ApiClient = require(script.ApiClient),
-	ConversationHistory = require(script.ConversationHistory),
-	MessageConverter = require(script.MessageConverter),
-	AgenticLoop = require(script.AgenticLoop)
+	ApiClient = require(script.Parent.ApiClient),
+	ConversationHistory = require(script.Parent.ConversationHistory),
+	MessageConverter = require(script.Parent.MessageConverter),
+	AgenticLoop = require(script.Parent.AgenticLoop)
 }

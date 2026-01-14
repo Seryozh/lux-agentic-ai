@@ -538,8 +538,8 @@ function ChatRenderer.persistThinking(state)
 	thinkingAnimation = nil
 
 	-- Create preview text from first thought
-	local previewText = thoughtTexts[1]:gsub("^[??????]%s*", ""):sub(1, 50)
-	if #previewText >= 50 then previewText = previewText .. "..." end
+	local previewText = thoughtTexts[1]:gsub("^[" .. Constants.ICONS.ARROW_RIGHT .. Constants.ICONS.READ .. Constants.ICONS.SUCCESS .. Constants.ICONS.ERROR .. "]%s*", ""):sub(1, 50)
+	if #previewText >= 50 then previewText = previewText .. Constants.ICONS.THINKING end
 
 	-- Create the new collapsible container (collapsed by default)
 	local container = ChatRenderer.addCollapsiblePlanning(state, thoughtTexts, previewText)
@@ -572,20 +572,20 @@ function ChatRenderer.addThought(text, thoughtType)
 	-- Choose color based on type
 	local bgColor = Constants.COLORS.backgroundLight
 	local textColor = Constants.COLORS.textPrimary
-	local prefixIcon = "??"
+	local prefixIcon = Constants.ICONS.ARROW_RIGHT
 
 	if thoughtType == "tool" then
 		bgColor = Color3.fromRGB(50, 60, 80)
 		textColor = Color3.fromRGB(150, 180, 255)
-		prefixIcon = "??"
+		prefixIcon = Constants.ICONS.READ
 	elseif thoughtType == "result" then
 		bgColor = Color3.fromRGB(40, 60, 50)
 		textColor = Color3.fromRGB(150, 255, 180)
-		prefixIcon = "?"
+		prefixIcon = Constants.ICONS.SUCCESS
 	elseif thoughtType == "error" then
 		bgColor = Color3.fromRGB(70, 40, 40)
 		textColor = Color3.fromRGB(255, 180, 180)
-		prefixIcon = "?"
+		prefixIcon = Constants.ICONS.ERROR
 	end
 
 	local thoughtBlock = Create.new("Frame", {
@@ -686,16 +686,16 @@ function ChatRenderer.addToolActivity(state, toolIntent, toolResult, status)
 	-- Choose styling based on status
 	local bgColor = Color3.fromRGB(40, 45, 55) -- Dark blue-gray for tools
 	local borderColor = Constants.COLORS.accentPrimary
-	local statusIcon = "?"
+	local statusIcon = Constants.ICONS.PENDING
 
 	if status == "success" then
 		bgColor = Color3.fromRGB(35, 50, 40) -- Dark green tint
 		borderColor = Constants.COLORS.accentSuccess
-		statusIcon = "?"
+		statusIcon = Constants.ICONS.SUCCESS
 	elseif status == "error" then
 		bgColor = Color3.fromRGB(55, 35, 35) -- Dark red tint
 		borderColor = Constants.COLORS.accentError
-		statusIcon = "?"
+		statusIcon = Constants.ICONS.ERROR
 	end
 
 	-- Combine intent and result if both present
@@ -703,7 +703,7 @@ function ChatRenderer.addToolActivity(state, toolIntent, toolResult, status)
 	if toolResult and toolResult ~= "" then
 		displayText = displayText .. "\n" .. statusIcon .. " " .. toolResult
 	elseif status == "pending" then
-		displayText = "? " .. displayText
+		displayText = Constants.ICONS.PENDING .. " " .. displayText
 	end
 
 	-- Create the tool activity frame (more compact than regular messages)
@@ -778,12 +778,12 @@ function ChatRenderer.addCompletionSummary(state, summary)
 
 	-- Build summary text
 	local lines = {}
-	table.insert(lines, "**? Task Complete**")
+	table.insert(lines, "**" .. Constants.ICONS.SUCCESS .. " Task Complete**")
 
 	if summary.items and #summary.items > 0 then
 		table.insert(lines, "")
 		for _, item in ipairs(summary.items) do
-			local icon = item.success and "?" or "?"
+			local icon = item.success and Constants.ICONS.SUCCESS or Constants.ICONS.FAIL
 			table.insert(lines, string.format("  %s %s", icon, item.description))
 		end
 	end
@@ -942,7 +942,7 @@ function ChatRenderer.startToolGroup(state, groupTitle)
 	-- Header row
 	Create.new("TextLabel", {
 		Name = "GroupHeader",
-		Text = "?? " .. (groupTitle or "Tool Execution"),
+		Text = Constants.ICONS.READ .. " " .. (groupTitle or "Tool Execution"),
 		Size = UDim2.new(1, 0, 0, 16),
 		BackgroundTransparency = 1,
 		TextColor3 = Constants.COLORS.textSecondary,
@@ -967,14 +967,14 @@ function ChatRenderer.addToolGroupItem(text, status)
 
 	status = status or "success"
 
-	local icon = "?"
+	local icon = Constants.ICONS.SUCCESS
 	local textColor = Color3.fromRGB(140, 200, 160) -- Soft green
 
 	if status == "pending" then
-		icon = "?"
+		icon = Constants.ICONS.PENDING
 		textColor = Color3.fromRGB(160, 180, 220) -- Soft blue
 	elseif status == "error" then
-		icon = "?"
+		icon = Constants.ICONS.FAIL
 		textColor = Color3.fromRGB(220, 140, 140) -- Soft red
 	end
 
@@ -1019,11 +1019,11 @@ function ChatRenderer.updateToolGroupItem(index, status)
 	if not toolGroupList or not toolGroupList[index] then return end
 
 	local item = toolGroupList[index]
-	local icon = "?"
+	local icon = Constants.ICONS.SUCCESS
 	local textColor = Color3.fromRGB(140, 200, 160)
 
 	if status == "error" then
-		icon = "?"
+		icon = Constants.ICONS.FAIL
 		textColor = Color3.fromRGB(220, 140, 140)
 	end
 
@@ -1060,7 +1060,7 @@ function ChatRenderer.finalizeToolGroup(state)
 		if errorCount > 0 then
 			statusText = statusText .. string.format(", %d failed", errorCount)
 		end
-		header.Text = "? " .. statusText
+		header.Text = Constants.ICONS.SUCCESS .. " " .. statusText
 	end
 
 	-- Clear references
@@ -1080,7 +1080,7 @@ end
 function ChatRenderer.addCompactSystemMessage(state, text, icon)
 	if not state or not state.ui then return end
 
-	icon = icon or "?"
+	icon = icon or Constants.ICONS.SUCCESS
 	local layoutOrder = #state.chatMessages + 1
 
 	local msgFrame = Create.new("Frame", {
@@ -1176,14 +1176,14 @@ function ChatRenderer.addVerificationPrompt(state, request, onResponse)
 
 	-- Header
 	local verificationType = request.verificationType or "visual"
-	local headerIcon = "??"
+	local headerIcon = Constants.ICONS.INFO
 	local headerText = "Verification"
 
 	if verificationType == "functional" then
-		headerIcon = "??"
+		headerIcon = Constants.ICONS.READ
 		headerText = "Testing"
 	elseif verificationType == "both" then
-		headerIcon = "??"
+		headerIcon = Constants.ICONS.INFO .. Constants.ICONS.READ
 		headerText = "Verification & Testing"
 	end
 
@@ -1267,7 +1267,7 @@ function ChatRenderer.addVerificationPrompt(state, request, onResponse)
 		for i, suggestion in ipairs(request.suggestions) do
 			Create.new("TextLabel", {
 				Name = "Suggestion_" .. i,
-				Text = "� " .. suggestion,
+				Text = "- " .. suggestion,
 				Size = UDim2.new(1, 0, 0, 16),
 				BackgroundTransparency = 1,
 				TextColor3 = Constants.COLORS.textSecondary,
@@ -1315,14 +1315,14 @@ function ChatRenderer.addVerificationPrompt(state, request, onResponse)
 	end
 
 	-- "Looks Good" button
-	local positiveBtn = createButton("PositiveBtn", "? Looks Good", Constants.COLORS.accentSuccess, 1)
+	local positiveBtn = createButton("PositiveBtn", Constants.ICONS.SUCCESS .. " Looks Good", Constants.COLORS.accentSuccess, 1)
 	positiveBtn.MouseButton1Click:Connect(function()
 		-- Disable buttons
 		buttonRow.Visible = false
 		-- Add response indicator
 		Create.new("TextLabel", {
 			Name = "Response",
-			Text = "? Confirmed as working",
+			Text = Constants.ICONS.SUCCESS .. " Confirmed as working",
 			Size = UDim2.new(1, 0, 0, 16),
 			BackgroundTransparency = 1,
 			TextColor3 = Constants.COLORS.accentSuccess,
@@ -1338,7 +1338,7 @@ function ChatRenderer.addVerificationPrompt(state, request, onResponse)
 	end)
 
 	-- "Problem" button
-	local negativeBtn = createButton("NegativeBtn", "? Problem", Constants.COLORS.accentError, 2)
+	local negativeBtn = createButton("NegativeBtn", Constants.ICONS.ERROR .. " Problem", Constants.COLORS.accentError, 2)
 	negativeBtn.MouseButton1Click:Connect(function()
 		-- Show text input for details
 		buttonRow.Visible = false
@@ -1346,7 +1346,7 @@ function ChatRenderer.addVerificationPrompt(state, request, onResponse)
 	end)
 
 	-- "Describe" button
-	local describeBtn = createButton("DescribeBtn", "?? Details", Constants.COLORS.accentPrimary, 3)
+	local describeBtn = createButton("DescribeBtn", Constants.ICONS.INFO .. " Details", Constants.COLORS.accentPrimary, 3)
 	describeBtn.MouseButton1Click:Connect(function()
 		buttonRow.Visible = false
 		ChatRenderer.showVerificationInput(verifyFrame, onResponse, nil)
@@ -1426,7 +1426,7 @@ function ChatRenderer.showVerificationInput(verifyFrame, onResponse, isNegative)
 		inputFrame:Destroy()
 		Create.new("TextLabel", {
 			Name = "Response",
-			Text = "?? Feedback: \"" .. feedbackText:sub(1, 50) .. (feedbackText:len() > 50 and "..." or "") .. "\"",
+			Text = Constants.ICONS.INFO .. " Feedback: \"" .. feedbackText:sub(1, 50) .. (feedbackText:len() > 50 and Constants.ICONS.THINKING or "") .. "\"",
 			Size = UDim2.new(1, 0, 0, 0),
 			BackgroundTransparency = 1,
 			TextColor3 = Constants.COLORS.textSecondary,
@@ -1497,7 +1497,7 @@ function ChatRenderer.createCollapsibleContainer(state, config)
 
 	config = config or {}
 	local title = config.title or "Details"
-	local icon = config.icon or "??"
+	local icon = config.icon or "[+]"
 	local headerColor = config.headerColor or Constants.COLORS.accentWarning
 	local bgColor = config.bgColor or Constants.COLORS.toolActivityBg
 	local collapsed = config.collapsed ~= false -- Default to collapsed
@@ -1566,7 +1566,7 @@ function ChatRenderer.createCollapsibleContainer(state, config)
 		Size = UDim2.new(0, 24, 0, 24),
 		Position = UDim2.new(0, 4, 0.5, -12),
 		BackgroundTransparency = 1,
-		Text = collapsed and "?" or "?",
+		Text = collapsed and Constants.ICONS.EXPAND or Constants.ICONS.COLLAPSE,
 		TextColor3 = headerColor,
 		Font = Enum.Font.GothamBold,
 		TextSize = 16, -- Larger icon
@@ -1678,9 +1678,9 @@ function ChatRenderer.createCollapsibleContainer(state, config)
 		-- Animate toggle icon rotation via text change
 		if isCollapsed then
 			-- Collapsing animation
-			toggleIcon.Text = "?"
+			toggleIcon.Text = Constants.ICONS.COLLAPSE
 			task.wait(0.05)
-			toggleIcon.Text = "?"
+			toggleIcon.Text = Constants.ICONS.EXPAND
 
 			-- Hide content with fade
 			local fadeTween = TweenService:Create(contentFrame, COLLAPSE_TWEEN_INFO, {
@@ -1702,9 +1702,9 @@ function ChatRenderer.createCollapsibleContainer(state, config)
 			end
 		else
 			-- Expanding animation
-			toggleIcon.Text = "?"
+			toggleIcon.Text = Constants.ICONS.EXPAND
 			task.wait(0.05)
-			toggleIcon.Text = "?"
+			toggleIcon.Text = Constants.ICONS.COLLAPSE
 
 			-- Hide preview first
 			if previewContainer.Visible then
@@ -1774,7 +1774,7 @@ function ChatRenderer.addCollapsiblePlanning(state, thoughts, summary)
 
 	local container, contentFrame = ChatRenderer.createCollapsibleContainer(state, {
 		title = "Planning Phase",
-		icon = "??",
+		icon = Constants.ICONS.THINKING,
 		headerColor = Constants.COLORS.accentWarning,
 		bgColor = Constants.COLORS.messagePlanning or Color3.fromRGB(45, 45, 60),
 		collapsed = true,
@@ -1789,13 +1789,13 @@ function ChatRenderer.addCollapsiblePlanning(state, thoughts, summary)
 		local bgColor = Constants.COLORS.backgroundLight
 		local textColor = Constants.COLORS.textPrimary
 
-		if thought:find("??") then
+		if thought:find(Constants.ICONS.READ) then
 			bgColor = Color3.fromRGB(45, 55, 70)
 			textColor = Color3.fromRGB(150, 180, 255)
-		elseif thought:find("?") then
+		elseif thought:find(Constants.ICONS.SUCCESS) then
 			bgColor = Color3.fromRGB(40, 55, 45)
 			textColor = Color3.fromRGB(150, 255, 180)
-		elseif thought:find("?") then
+		elseif thought:find(Constants.ICONS.ERROR) or thought:find(Constants.ICONS.FAIL) then
 			bgColor = Color3.fromRGB(60, 40, 40)
 			textColor = Color3.fromRGB(255, 180, 180)
 		end
@@ -1869,7 +1869,7 @@ function ChatRenderer.startCollapsibleSystemGroup(state, groupTitle)
 
 	local container, contentFrame = ChatRenderer.createCollapsibleContainer(state, {
 		title = groupTitle or "Operations",
-		icon = "??",
+		icon = Constants.ICONS.READ,
 		headerColor = Constants.COLORS.toolSuccessBorder or Constants.COLORS.accentSuccess,
 		bgColor = Constants.COLORS.toolActivityBg or Color3.fromRGB(35, 40, 45),
 		collapsed = true,
@@ -1899,14 +1899,14 @@ function ChatRenderer.addCollapsibleSystemItem(text, status)
 
 	status = status or "success"
 
-	local icon = "?"
+	local icon = Constants.ICONS.SUCCESS
 	local textColor = Color3.fromRGB(140, 200, 160) -- Soft green
 
 	if status == "pending" then
-		icon = "?"
+		icon = Constants.ICONS.PENDING
 		textColor = Color3.fromRGB(160, 180, 220) -- Soft blue
 	elseif status == "error" then
-		icon = "?"
+		icon = Constants.ICONS.FAIL
 		textColor = Color3.fromRGB(220, 140, 140) -- Soft red
 	end
 
@@ -1978,7 +1978,7 @@ function ChatRenderer.finalizeCollapsibleSystemGroup()
 			if errorCount > 0 then
 				statusText = statusText .. string.format(", %d failed", errorCount)
 			end
-			title.Text = "? " .. statusText
+			title.Text = Constants.ICONS.SUCCESS .. " " .. statusText
 		end
 	end
 

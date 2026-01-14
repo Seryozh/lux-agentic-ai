@@ -315,6 +315,61 @@ Constants.COLORS = {
 	collapsibleHeaderHover = Color3.fromRGB(55, 60, 78), -- Header hover
 }
 
+-- Icons (Emoji + Stylish symbols for Roblox TextLabel)
+Constants.ICONS = {
+	-- Brand
+	LUX = "✨",
+
+	-- Status indicators
+	CHECK = "✅",
+	ERROR = "❌",
+	WARNING = "⚠️",
+	INFO = "ℹ️",
+	LOADING = "⏳",
+
+	-- Actions
+	SEND = "➤",
+	REFRESH = "🔄",
+	RESET = "🔃",
+	SETTINGS = "⚙️",
+	SEARCH = "🔍",
+
+	-- UI elements
+	EXPAND = "▶",
+	COLLAPSE = "▼",
+	ARROW_RIGHT = "→",
+	ARROW_DOWN = "↓",
+
+	-- Chat/AI
+	AI = "🤖",
+	USER = "👤",
+	SYSTEM = "⚡",
+	THINKING = "💭",
+
+	-- Tools
+	EDIT = "✏️",
+	CREATE = "➕",
+	DELETE = "🗑️",
+	READ = "📖",
+	PATCH = "🔧",
+	PROPS = "⚙️",
+
+	-- Status
+	SUCCESS = "✅",
+	FAIL = "❌",
+	PENDING = "⏳",
+
+	-- Currency/Stats
+	COST = "💰",
+	TOKENS = "🔢",
+
+	-- Misc
+	KEY = "🔑",
+	STAR = "⭐",
+	DOT = "•",
+	BULLET = "•",
+}
+
 -- UI Dimensions
 Constants.UI = {
 	WIDGET_DEFAULT_WIDTH = 400,
@@ -331,7 +386,7 @@ Constants.UI = {
 	FONT_HEADER = Enum.Font.GothamBold,
 	FONT_NORMAL = Enum.Font.Gotham,
 	FONT_CODE = Enum.Font.Code,
-	FONT_MONO = Enum.Font.Code, -- Alias for code/monospace font
+	FONT_MONO = Enum.Font.Code,
 	HEADER_HEIGHT = 30,
 	BUTTON_HEIGHT = 40,
 	INPUT_HEIGHT = 60,
@@ -342,17 +397,17 @@ Constants.UI = {
 Constants.ERRORS = {
 	TOO_MANY_SCRIPTS = {
 		title = "Too Many Scripts",
-		icon = "?",
+		icon = "⚠️",
 		format = function(count, breakdown)
 			return string.format("Found %d scripts (max %d).\nPlease reduce count or use empty baseplate.", count, Constants.MAX_SCRIPTS)
 		end
 	},
-	SERVER_UNREACHABLE = { title = "Cannot Connect", icon = "?", message = "Unable to reach server." },
-	SERVER_ERROR = { title = "Server Error", icon = "?", format = function(code) return "Error code: " .. code end },
-	REQUEST_TIMEOUT = { title = "Timeout", icon = "?", format = function(t) return "Request timed out (> " .. t .. "s)" end },
-	RATE_LIMITED = { title = "Slow Down", icon = "??", message = "Sending too quickly." },
-	SCRIPT_NOT_FOUND = { title = "Not Found", icon = "?", format = function(p) return "Script not found: " .. p end },
-	HTTP_NOT_ENABLED = { title = "HTTP Disabled", icon = "?", message = "Enable HttpService in Game Settings." }
+	SERVER_UNREACHABLE = { title = "Cannot Connect", icon = "❌", message = "Unable to reach server." },
+	SERVER_ERROR = { title = "Server Error", icon = "❌", format = function(code) return "Error code: " .. code end },
+	REQUEST_TIMEOUT = { title = "Timeout", icon = "⏳", format = function(t) return "Request timed out (> " .. t .. "s)" end },
+	RATE_LIMITED = { title = "Slow Down", icon = "⚠️", message = "Sending too quickly." },
+	SCRIPT_NOT_FOUND = { title = "Not Found", icon = "❌", format = function(p) return "Script not found: " .. p end },
+	HTTP_NOT_ENABLED = { title = "HTTP Disabled", icon = "⚠️", message = "Enable HttpService in Game Settings." }
 }
 
 -- Status Panel States

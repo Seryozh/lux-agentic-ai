@@ -154,7 +154,7 @@ end
 	@param generateSummaryFn function - Function to call API for summary generation
 ]]
 function ConversationHistory.compressIfNeeded(generateSummaryFn)
-	local CompressionFallback = require(script.Parent.Parent.CompressionFallback)
+	local CompressionFallback = require(script.Parent.Parent.Context.CompressionFallback)
 
 	-- Check if compression needed using new module
 	if not CompressionFallback.needsCompression(conversationHistory) then

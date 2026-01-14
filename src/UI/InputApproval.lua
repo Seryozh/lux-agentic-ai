@@ -10,14 +10,14 @@ local Utils = require(script.Parent.Parent.Shared.Utils)
 
 local InputApproval = {}
 
--- Operation type icons and labels
+-- Operation type icons and labels (using Constants.ICONS)
 local OPERATION_ICONS = {
-	edit_script = "??",
-	patch_script = "??",
-	create_script = "?",
-	create_instance = "??",
-	set_instance_properties = "??",
-	delete_instance = "???"
+	edit_script = Constants.ICONS.EDIT,
+	patch_script = Constants.ICONS.PATCH,
+	create_script = Constants.ICONS.CREATE,
+	create_instance = Constants.ICONS.CREATE,
+	set_instance_properties = Constants.ICONS.PROPS,
+	delete_instance = Constants.ICONS.DELETE
 }
 
 local OPERATION_LABELS = {
@@ -88,7 +88,7 @@ local function getOperationExplanation(operation)
 			table.insert(details, "contains scripts")
 		end
 		if #details > 0 then
-			return string.format("?? Warning: %s", table.concat(details, ", "))
+			return string.format("[!] Warning: %s", table.concat(details, ", "))
 		end
 		return string.format("Removing %s from the game", info.className or "instance")
 	end
@@ -313,7 +313,7 @@ local function createPatchPreview(searchContent, replaceContent, parent)
 			Parent = scrollingFrame
 		})
 		Create.new("TextLabel", {
-			Text = "? BECOMES ?",
+			Text = "--- BECOMES ---",
 			Size = UDim2.new(1, 0, 1, 0),
 			BackgroundTransparency = 1,
 			TextColor3 = Color3.fromRGB(100, 100, 100),
@@ -424,7 +424,7 @@ local function showReviewModal(parent, operation, onApprove, onDeny, onClose)
 		Parent = modal
 	})
 
-	local icon = OPERATION_ICONS[operation.type] or "??"
+	local icon = OPERATION_ICONS[operation.type] or "[?]"
 	local label = OPERATION_LABELS[operation.type] or operation.type
 	local titleText = string.format("%s %s", icon, label)
 
@@ -481,7 +481,7 @@ local function showReviewModal(parent, operation, onApprove, onDeny, onClose)
 
 	-- Deny Button (matching inline button colors)
 	local denyBtn = Create.new("TextButton", {
-		Text = "? Deny Changes",
+		Text = "[X] Deny",
 		Size = UDim2.new(0, 150, 1, 0),
 		BackgroundColor3 = Constants.COLORS.accentError,
 		TextColor3 = Color3.fromRGB(255, 255, 255),
@@ -504,7 +504,7 @@ local function showReviewModal(parent, operation, onApprove, onDeny, onClose)
 
 	-- Approve Button (matching inline button colors)
 	local approveBtn = Create.new("TextButton", {
-		Text = "? Approve Changes",
+		Text = "[OK] Approve",
 		Size = UDim2.new(0, 150, 1, 0),
 		BackgroundColor3 = Constants.COLORS.accentSuccess,
 		TextColor3 = Color3.fromRGB(255, 255, 255),
@@ -615,7 +615,7 @@ function InputApproval.show(inputContainer, operation, onApprove, onDeny)
 	})
 
 	-- Row 1: Icon + Title + Path
-	local icon = OPERATION_ICONS[operation.type] or "??"
+	local icon = OPERATION_ICONS[operation.type] or "[?]"
 	local label = OPERATION_LABELS[operation.type] or operation.type
 	local targetPath = operation.path or (operation.data and operation.data.path) or ""
 	local summary = string.format("%s %s: %s", icon, label, targetPath)
@@ -679,7 +679,7 @@ function InputApproval.show(inputContainer, operation, onApprove, onDeny)
 	-- Review Button (only for code operations)
 	if showReviewButton then
 		local reviewBtn = Create.new("TextButton", {
-			Text = "?? Review Code",
+			Text = "[?] Review",
 			Size = reviewWidth,
 			Position = UDim2.new(0, 0, 0, 0),
 			BackgroundColor3 = Constants.COLORS.accentPrimary,
@@ -703,7 +703,7 @@ function InputApproval.show(inputContainer, operation, onApprove, onDeny)
 
 	-- Approve Button (Green)
 	local approveBtn = Create.new("TextButton", {
-		Text = "? Approve",
+		Text = "[OK]",
 		Size = approveWidth,
 		Position = approvePos,
 		BackgroundColor3 = Constants.COLORS.accentSuccess,
@@ -718,7 +718,7 @@ function InputApproval.show(inputContainer, operation, onApprove, onDeny)
 
 	-- Deny Button (Red)
 	local denyBtn = Create.new("TextButton", {
-		Text = "? Deny",
+		Text = "[X]",
 		Size = denyWidth,
 		Position = denyPos,
 		BackgroundColor3 = Constants.COLORS.accentError,

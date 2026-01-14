@@ -200,14 +200,14 @@ function UserFeedback.show(inputContainer, request, onResponse)
 
 	-- Header with icon
 	local verificationType = request.verificationType or "visual"
-	local headerIcon = "??"
+	local headerIcon = "[?]"
 	local headerText = "Verification"
 
 	if verificationType == "functional" then
-		headerIcon = "??"
+		headerIcon = "[T]"
 		headerText = "Testing"
 	elseif verificationType == "both" then
-		headerIcon = "??"
+		headerIcon = "[?T]"
 		headerText = "Verification & Testing"
 	end
 
@@ -264,7 +264,7 @@ function UserFeedback.show(inputContainer, request, onResponse)
 		for i, suggestion in ipairs(request.suggestions) do
 			Create.new("TextLabel", {
 				Name = "Suggestion_" .. i,
-				Text = "� " .. suggestion,
+				Text = "- " .. suggestion,
 				Size = UDim2.new(1, 0, 0, 14),
 				Position = UDim2.new(0, 0, 0, suggestionsEndY + ((i-1) * 16)),
 				BackgroundTransparency = 1,
@@ -305,7 +305,7 @@ function UserFeedback.show(inputContainer, request, onResponse)
 	-- "Looks Good" button (positive)
 	local positiveBtn = Create.new("TextButton", {
 		Name = "PositiveBtn",
-		Text = "? Good",
+		Text = "[OK] Good",
 		Size = UDim2.new(0.32, -2, 1, 0),
 		Position = UDim2.new(0, 0, 0, 0),
 		BackgroundColor3 = Constants.COLORS.accentSuccess,
@@ -326,7 +326,7 @@ function UserFeedback.show(inputContainer, request, onResponse)
 	-- "Problem" button
 	local negativeBtn = Create.new("TextButton", {
 		Name = "NegativeBtn",
-		Text = "? Issue",
+		Text = "[!] Issue",
 		Size = UDim2.new(0.32, -2, 1, 0),
 		Position = UDim2.new(0.34, 0, 0, 0),
 		BackgroundColor3 = Constants.COLORS.accentError,
@@ -347,7 +347,7 @@ function UserFeedback.show(inputContainer, request, onResponse)
 	-- "Describe" button
 	local describeBtn = Create.new("TextButton", {
 		Name = "DescribeBtn",
-		Text = "?? More",
+		Text = "(i) More",
 		Size = UDim2.new(0.32, -2, 1, 0),
 		Position = UDim2.new(0.68, 0, 0, 0),
 		BackgroundColor3 = Constants.COLORS.accentPrimary,

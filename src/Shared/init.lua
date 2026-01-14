@@ -5,10 +5,10 @@
 
 -- Export modules from Shared folder
 local Shared = {
-	Constants = require(script.Constants),
-	Utils = require(script.Utils),
-	IndexManager = require(script.IndexManager),
-	MarkdownParser = require(script.MarkdownParser),
+	Constants = require(script.Parent.Constants),
+	Utils = require(script.Parent.Utils),
+	IndexManager = require(script.Parent.IndexManager),
+	MarkdownParser = require(script.Parent.MarkdownParser),
 }
 
 return Shared

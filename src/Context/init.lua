@@ -5,9 +5,9 @@
 
 -- Export modules from Context folder
 local Context = {
-	Selector = require(script.ContextSelector),
-	PromptBuilder = require(script.SystemPrompt),
-	Compression = require(script.CompressionFallback),
+	Selector = require(script.Parent.ContextSelector),
+	PromptBuilder = require(script.Parent.SystemPrompt),
+	Compression = require(script.Parent.CompressionFallback),
 }
 
 return Context

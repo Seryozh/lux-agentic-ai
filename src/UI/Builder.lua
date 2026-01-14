@@ -73,7 +73,7 @@ function Builder.createUI(widget, state)
 	local header = Components.TextLabel({
 		Name = "Header",
 		Size = UDim2.new(1, -70, 1, 0),
-		Text = "?? " .. Constants.PLUGIN_NAME,
+		Text = Constants.ICONS.LUX .. " " .. Constants.PLUGIN_NAME,
 		Font = Constants.UI.FONT_HEADER,
 		TextSize = Constants.UI.FONT_SIZE_HEADER,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -86,10 +86,10 @@ function Builder.createUI(widget, state)
 		Size = UDim2.new(0, 30, 0, 30),
 		Position = UDim2.new(1, -64, 0.5, -15),
 		BackgroundColor3 = Constants.COLORS.backgroundLight,
-		Text = "??",
+		Text = Constants.ICONS.RESET,
 		TextColor3 = Constants.COLORS.textSecondary,
-		Font = Enum.Font.Gotham,
-		TextSize = 14,
+		Font = Enum.Font.GothamBold,
+		TextSize = 10,
 		Parent = headerContainer
 	})
 
@@ -104,10 +104,10 @@ function Builder.createUI(widget, state)
 		Size = UDim2.new(0, 30, 0, 30),
 		Position = UDim2.new(1, -30, 0.5, -15),
 		BackgroundColor3 = Constants.COLORS.backgroundLight,
-		Text = "??",
+		Text = Constants.ICONS.SETTINGS,
 		TextColor3 = Constants.COLORS.textSecondary,
-		Font = Enum.Font.Gotham,
-		TextSize = 16,
+		Font = Enum.Font.GothamBold,
+		TextSize = 10,
 		Parent = headerContainer
 	})
 
@@ -152,7 +152,7 @@ function Builder.createUI(widget, state)
 		Name = "RescanButton",
 		Size = UDim2.new(0.5, -4, 1, 0),
 		BackgroundColor3 = Constants.COLORS.backgroundLight,
-		Text = "?? Rescan Scripts",
+		Text = Constants.ICONS.REFRESH .. " Rescan",
 		TextColor3 = Constants.COLORS.textSecondary,
 		TextSize = Constants.UI.FONT_SIZE_SMALL,
 		LayoutOrder = 1,
@@ -164,7 +164,7 @@ function Builder.createUI(widget, state)
 		Name = "ResetContextButton",
 		Size = UDim2.new(0.5, -4, 1, 0),
 		BackgroundColor3 = Constants.COLORS.backgroundLight,
-		Text = "?? Reset Context",
+		Text = Constants.ICONS.RESET .. " Reset",
 		TextColor3 = Constants.COLORS.textSecondary,
 		TextSize = Constants.UI.FONT_SIZE_SMALL,
 		LayoutOrder = 2,
@@ -275,7 +275,7 @@ function Builder.createUI(widget, state)
 		Name = "TokenStatusLabel",
 		Size = UDim2.new(1, 0, 1, 0),
 		BackgroundTransparency = 1,
-		Text = "?? Session: $0.0000",
+		Text = Constants.ICONS.COST .. " Session: $0.0000",
 		TextColor3 = Constants.COLORS.textSecondary,
 		Font = Constants.UI.FONT_MONO,
 		TextSize = Constants.UI.FONT_SIZE_SMALL - 1,

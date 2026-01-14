@@ -13,112 +13,21 @@ local HttpService = game:GetService("HttpService")
 local ChangeHistoryService = game:GetService("ChangeHistoryService")
 
 -- ============================================================================
--- SAFE MODULE LOADING WITH FALLBACK ERROR UI
+-- MODULE LOADING
 -- ============================================================================
 
-local success, loadError = pcall(function()
-	-- Modules
-	local src = script:FindFirstChild("src") or script.Parent:FindFirstChild("src")
-	if not src then
-		error("[Lux] Cannot find 'src' folder. Make sure the plugin structure is correct:\nLux/\n  Main (Script)\n  src/ (Folder)")
-	end
+local src = script:FindFirstChild("src") or script.Parent:FindFirstChild("src")
 
-	-- Validate critical modules exist before requiring
-	local function validateModule(parent, moduleName)
-		local module = parent:FindFirstChild(moduleName)
-		if not module then
-			error(string.format("[Lux] Cannot find module '%s' in '%s'. Plugin structure may be corrupted.", moduleName, parent:GetFullName()))
-		end
-		if not module:IsA("ModuleScript") and not module:IsA("Folder") then
-			error(string.format("[Lux] '%s' is not a ModuleScript or Folder (found %s). Plugin structure may be corrupted.", moduleName, module.ClassName))
-		end
-
-		-- If it's a folder, verify it has an init ModuleScript
-		if module:IsA("Folder") then
-			local initModule = module:FindFirstChild("init")
-			if not initModule then
-				error(string.format("[Lux] Folder '%s' is missing 'init' ModuleScript. Found children: %s",
-					moduleName,
-					table.concat((function()
-						local names = {}
-						for _, child in ipairs(module:GetChildren()) do
-							table.insert(names, child.Name .. " (" .. child.ClassName .. ")")
-						end
-						return names
-					end)(), ", ")))
-			end
-			if not initModule:IsA("ModuleScript") then
-				error(string.format("[Lux] Folder '%s' has 'init' but it's not a ModuleScript (found %s)", moduleName, initModule.ClassName))
-			end
-		end
-
-		return module
-	end
-
-	validateModule(src, "Shared")
-	validateModule(src, "OpenRouterClient")
-	validateModule(src, "Tools")
-	validateModule(src, "UI")
-
-	return {
-		Constants = require(src.Shared.Constants),
-		Utils = require(src.Shared.Utils),
-		IndexManager = require(src.Shared.IndexManager),
-		OpenRouterClient = require(src.OpenRouterClient),
-		Tools = require(src.Tools),
-		Builder = require(src.UI.Builder),
-		ChatRenderer = require(src.UI.ChatRenderer),
-		InputApproval = require(src.UI.InputApproval),
-		UserFeedback = require(src.UI.UserFeedback),
-		KeySetup = require(src.UI.KeySetup),
-	}
-end)
-
-if not success then
-	-- CRITICAL ERROR: Show error toolbar and stop
-	warn("[Lux] CRITICAL ERROR during module loading:")
-	warn(loadError)
-
-	local toolbar = plugin:CreateToolbar("Lux AI")
-	local button = toolbar:CreateButton(
-		"Lux Error",
-		"Plugin failed to load - click for details",
-		"rbxasset://textures/ui/ErrorIcon.png",
-		"Error"
-	)
-
-	button.Click:Connect(function()
-		local errorMsg = string.format([[Lux Plugin Failed to Load
-
-Error: %s
-
-This usually happens if:
-1. The plugin was not installed correctly
-2. Plugin files are corrupted
-3. A recent update broke compatibility
-
-Try:
-1. Reinstall the plugin from Roblox Creator Store
-2. Check Output window for full error details
-3. Report this issue to the developer]], loadError)
-
-		warn(errorMsg)
-	end)
-
-	return -- Stop execution
-end
-
--- Unpack loaded modules
-local Constants = success.Constants
-local Utils = success.Utils
-local IndexManager = success.IndexManager
-local OpenRouterClient = success.OpenRouterClient
-local Tools = success.Tools
-local Builder = success.Builder
-local ChatRenderer = success.ChatRenderer
-local InputApproval = success.InputApproval
-local UserFeedback = success.UserFeedback
-local KeySetup = success.KeySetup
+local Constants = require(src.Shared.Constants)
+local Utils = require(src.Shared.Utils)
+local IndexManager = require(src.Shared.IndexManager)
+local OpenRouterClient = require(src.OpenRouterClient)
+local Tools = require(src.Tools.init)
+local Builder = require(src.UI.Builder)
+local ChatRenderer = require(src.UI.ChatRenderer)
+local InputApproval = require(src.UI.InputApproval)
+local UserFeedback = require(src.UI.UserFeedback)
+local KeySetup = require(src.UI.KeySetup)
 
 if Constants.DEBUG then
 	print("[Lux DEBUG] Loading plugin v" .. Constants.PLUGIN_VERSION)
@@ -191,37 +100,26 @@ local buttons = Builder.createUI(state.widget, state)
 
 local function updateStatusUI()
 	local statusText = ""
+	local I = Constants.ICONS
 
 	if state.status == "needs_key" then
-		statusText = [[?? <b>API Key Required</b>
-
-Please enter your OpenRouter API key to get started.]]
+		statusText = I.KEY .. " <b>API Key Required</b>\n\nPlease enter your OpenRouter API key to get started."
 		state.ui.statusPanel.BackgroundColor3 = Constants.COLORS.backgroundLight
 
 	elseif state.status == "scanning" then
-		statusText = "?? <b>Scanning scripts...</b>"
+		statusText = I.LOADING .. " <b>Scanning scripts...</b>"
 
 	elseif state.status == "error" then
 		local breakdown = {}
 		for location, count in pairs(state.errorBreakdown or {}) do
-			table.insert(breakdown, string.format("- %s: %d", location, count))
+			table.insert(breakdown, string.format("  %s %s: %d", I.BULLET, location, count))
 		end
-		statusText = string.format([[? <b>Too Many Scripts</b>
-
-Found %d scripts, but LuaVibe supports maximum %d.
-
-Please reduce the number of scripts in your game.
-
-Scripts found in:
-%s]], #state.scripts, Constants.MAX_SCRIPTS, table.concat(breakdown, "\n"))
+		statusText = string.format("%s <b>Too Many Scripts</b>\n\nFound %d scripts (max %d).\n\n%s",
+			I.ERROR, #state.scripts, Constants.MAX_SCRIPTS, table.concat(breakdown, "\n"))
 		state.ui.statusPanel.BackgroundColor3 = Color3.fromRGB(60, 30, 30)
 
 	elseif state.status == "empty" then
-		statusText = [[?? <b>No Scripts Yet</b>
-
-Your game has no scripts yet - that's perfectly fine!
-
-Start chatting with the AI to create scripts, or add them manually.]]
+		statusText = I.INFO .. " <b>No Scripts Yet</b>\n\nYour game has no scripts yet - that's fine!\n\nStart chatting with the AI to create scripts."
 		state.ui.statusPanel.BackgroundColor3 = Constants.COLORS.backgroundLight
 
 		-- Enable chat immediately even with 0 scripts
@@ -234,13 +132,10 @@ Start chatting with the AI to create scripts, or add them manually.]]
 	elseif state.status == "ready" or state.status == "chatting" then
 		local scriptCount = #state.scripts
 		if scriptCount == 0 then
-			statusText = [[? <b>Ready to Chat!</b>
-
-No scripts found. Ask the AI to help you create scripts for your game!]]
+			statusText = I.CHECK .. " <b>Ready to Chat!</b>\n\nNo scripts found. Ask the AI to help create scripts!"
 		else
-			statusText = string.format([[? <b>Ready to Chat!</b>
-
-Found %d scripts. Ask questions, request code changes, or get help with your game!]], scriptCount)
+			statusText = string.format("%s <b>Ready to Chat!</b>\n\nFound %d scripts. Ask questions or request changes!",
+				I.CHECK, scriptCount)
 		end
 		state.ui.statusPanel.BackgroundColor3 = Constants.COLORS.backgroundLight
 
@@ -248,7 +143,7 @@ Found %d scripts. Ask questions, request code changes, or get help with your gam
 		if not state.chatEnabled then
 			state.chatEnabled = true
 			state.ui.chatContainer.Visible = true
-			state.ui.statusPanel.Size = UDim2.new(1, 0, 0, 80) -- Make status panel smaller
+			state.ui.statusPanel.Size = UDim2.new(1, 0, 0, 80)
 		end
 	end
 
@@ -261,11 +156,12 @@ local function updateTokenUI()
 	end
 
 	local usage = OpenRouterClient.getTokenUsage()
+	local I = Constants.ICONS
 
 	-- Show cost-focused display
 	local balanceText = ""
 	if state.creditBalance then
-		balanceText = string.format(" | Balance: $%.4f", state.creditBalance.remaining)
+		balanceText = string.format(" | Bal: $%.4f", state.creditBalance.remaining)
 	end
 
 	-- Token counter for compression
@@ -274,10 +170,12 @@ local function updateTokenUI()
 	local tokensUntil = math.max(0, tokenLimit - estTokens)
 
 	state.ui.tokenStatusLabel.Text = string.format(
-		"?? Session: $%.4f%s | ?? Compress in: %d tokens",
+		"%s Session: $%.4f%s | %s Context: %dk",
+		I.COST,
 		usage.totalCost,
 		balanceText,
-		tokensUntil
+		I.TOKENS,
+		math.floor(tokensUntil / 1000)
 	)
 end
 

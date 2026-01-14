@@ -22,9 +22,9 @@
 	Creator Store Compliant - No dynamic code execution
 ]]
 
-local ToolExecutor = require(script.ToolExecutor)
-local ApprovalQueue = require(script.ApprovalQueue)
-local ToolDefinitions = require(script.ToolDefinitions)
+local ToolExecutor = require(script.Parent.ToolExecutor)
+local ApprovalQueue = require(script.Parent.ApprovalQueue)
+local ToolDefinitions = require(script.Parent.ToolDefinitions)
 
 local Tools = {}
 

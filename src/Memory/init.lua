@@ -5,9 +5,9 @@
 
 -- Export modules from Memory folder
 local Memory = {
-	Working = require(script.WorkingMemory),
-	Decision = require(script.DecisionMemory),
-	Project = require(script.ProjectContext),
+	Working = require(script.Parent.WorkingMemory),
+	Decision = require(script.Parent.DecisionMemory),
+	Project = require(script.Parent.ProjectContext),
 }
 
 return Memory

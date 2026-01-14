@@ -15,7 +15,7 @@
 ]]
 
 local Constants = require(script.Parent.Parent.Shared.Constants)
-local Tools = require(script.Parent.Parent.Tools)
+local Tools = require(script.Parent.Parent.Tools.init)
 local SessionManager = require(script.Parent.Parent.Coordination.SessionManager)
 local OutputValidator = require(script.Parent.Parent.Safety.OutputValidator)
 local ToolResilience = require(script.Parent.Parent.Safety.ToolResilience)
