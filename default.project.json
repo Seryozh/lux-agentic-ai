@@ -1,0 +1,15 @@
+{
+  "name": "lux-agentic-ai",
+  "tree": {
+    "$className": "DataModel",
+    "ServerStorage": {
+      "$className": "ServerStorage",
+      "LuxAgenticAI": {
+        "$path": "src"
+      },
+      "Main": {
+        "$path": "Main.lua"
+      }
+    }
+  }
+}

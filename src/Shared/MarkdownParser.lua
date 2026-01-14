@@ -3,9 +3,9 @@
     Simplified markdown to Roblox RichText converter
     
     Supports:
-    - **bold** ? <b>bold</b>
-    - `code` ? <font face="Code">code</font>
-    - - Bullet lists ? • item
+    - **bold** -> <b>bold</b>
+    - `code` -> <font face="Code">code</font>
+    - Bullet lists -> bullet item
 ]]
 
 local MarkdownParser = {}
@@ -52,7 +52,7 @@ function MarkdownParser.parse(text)
 		-- Bullet lists (- item or * item)
 		local bullet = line:match("^%s*[%-*]%s+(.+)$")
 		if bullet then
-			line = "• " .. bullet
+			line = "â€¢ " .. bullet
 		end
 
 		-- Numbered lists (1. item)
