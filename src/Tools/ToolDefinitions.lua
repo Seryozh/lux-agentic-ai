@@ -209,7 +209,7 @@ return {
 			"2. Create a Frame: create_instance({className='Frame', parent='StarterGui.MainMenu', name='Header', properties={Size='0,0,1,50', BackgroundColor3='45,45,45'}})\n" ..
 			"3. Create a ScreenGui: create_instance({className='ScreenGui', parent='StarterGui', name='HUD'})\n" ..
 			"4. Create UICorner: create_instance({className='UICorner', parent='StarterGui.HUD.Frame', name='Corner', properties={CornerRadius='0,8'}})\n\n" ..
-			"?? IMPORTANT - CLASS-AWARE PROPERTY TYPES:\n" ..
+			"IMPORTANT - CLASS-AWARE PROPERTY TYPES:\n" ..
 			"Size and Position mean DIFFERENT THINGS on different classes!\n" ..
 			"- On GUI (Frame, TextLabel, etc.): Size/Position use UDim2 (4 numbers)\n" ..
 			"- On Parts/Models: Size/Position use Vector3 (3 numbers)\n\n" ..
@@ -256,7 +256,7 @@ return {
 			"2. Move a Part (uses Vector3): set_instance_properties({path='Workspace.SpawnPoint', properties={Position='0,10,0', Size='4,1,4'}})\n" ..
 			"3. Update text label: set_instance_properties({path='StarterGui.HUD.ScoreLabel', properties={Text='Score: 0', TextColor3='255,255,255', TextSize=24}})\n" ..
 			"4. Set UICorner radius: set_instance_properties({path='StarterGui.HUD.Frame.Corner', properties={CornerRadius='0,12'}})\n\n" ..
-			"?? IMPORTANT - CLASS-AWARE PROPERTY TYPES:\n" ..
+			"IMPORTANT - CLASS-AWARE PROPERTY TYPES:\n" ..
 			"The parser automatically detects the instance class and interprets values accordingly.\n" ..
 			"- Frame.Size expects UDim2 (4 numbers: scaleX,offsetX,scaleY,offsetY)\n" ..
 			"- Part.Size expects Vector3 (3 numbers: X,Y,Z)\n" ..
@@ -401,21 +401,21 @@ return {
 	{
 		name = "request_user_feedback",
 		description = "Ask the user to visually verify or test something in Studio/Play mode.\n\n" ..
-			"?? USE SPARINGLY - This pauses your work and waits for user response!\n\n" ..
+			"USE SPARINGLY - This pauses your work and waits for user response!\n\n" ..
 			"**GOOD times to use this:**\n" ..
-			"• After creating visible UI elements ? 'Can you see the new button in the top-right?'\n" ..
-			"• After implementing gameplay mechanics ? 'Please test in Play mode: does the jump feel right?'\n" ..
-			"• At major milestones ? 'The inventory UI is set up. Please check it before I add logic.'\n" ..
-			"• When debugging ? 'Can you still reproduce the issue?'\n\n" ..
+			"- After creating visible UI elements -> 'Can you see the new button in the top-right?'\n" ..
+			"- After implementing gameplay mechanics -> 'Please test in Play mode: does the jump feel right?'\n" ..
+			"- At major milestones -> 'The inventory UI is set up. Please check it before I add logic.'\n" ..
+			"- When debugging -> 'Can you still reproduce the issue?'\n\n" ..
 			"**DON'T use for:**\n" ..
-			"• After every small change (annoying!)\n" ..
-			"• Invisible changes (scripts, DataStores)\n" ..
-			"• Things you can verify with get_instance\n" ..
-			"• When user indicated urgency ('just do it', 'quick', etc.)\n\n" ..
+			"- After every small change (annoying!)\n" ..
+			"- Invisible changes (scripts, DataStores)\n" ..
+			"- Things you can verify with get_instance\n" ..
+			"- When user indicated urgency ('just do it', 'quick', etc.)\n\n" ..
 			"**Tips:**\n" ..
-			"• Ask SPECIFIC questions, not 'does it work?'\n" ..
-			"• Provide checklist items so user knows what to look at\n" ..
-			"• Max 1 verification per user request",
+			"- Ask SPECIFIC questions, not 'does it work?'\n" ..
+			"- Provide checklist items so user knows what to look at\n" ..
+			"- Max 1 verification per user request",
 		parameters = {
 			type = "object",
 			properties = {
