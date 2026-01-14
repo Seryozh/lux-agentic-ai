@@ -1,5 +1,5 @@
 --[[
-    Mabin.lua - Lux Plugin Entry Point (v1.1.0)
+    Main.lua - Lux Plugin Entry Point (v1.1.0)
 
     Features:
     - OpenRouter BYOK (Bring Your Own Key) integration

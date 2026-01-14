@@ -1,0 +1,187 @@
+# Lux Agentic AI - Project Documentation
+
+## Rojo Setup & Folder Structure
+
+### Overview
+This project uses Rojo to sync Lua code from the filesystem to Roblox Studio. The setup is designed to maintain a specific folder structure in Roblox while keeping clean, modular code in the filesystem.
+
+### Roblox Hierarchy
+```
+ServerStorage
+└── Lux (Folder)
+    ├── Main (Script)
+    └── src (Folder)
+        ├── Context (Folder)
+        │   ├── CompressionFallback (ModuleScript)
+        │   ├── ContextSelector (ModuleScript)
+        │   ├── SystemPrompt (ModuleScript)
+        │   └── init (ModuleScript)
+        ├── Coordination (Folder)
+        ├── Core (Folder)
+        ├── Memory (Folder)
+        ├── Planning (Folder)
+        ├── Safety (Folder)
+        ├── Shared (Folder)
+        ├── Tools (Folder)
+        ├── UI (Folder)
+        ├── OpenRouterClient (ModuleScript)
+        └── init (ModuleScript)
+```
+
+### Filesystem Structure
+```
+lux-agentic-ai/
+├── Main.server.lua                      → becomes Script named "Main"
+├── src/
+│   ├── init.module.lua                  → becomes ModuleScript named "init"
+│   ├── init.module.meta.json            → tells Rojo to name it "init"
+│   ├── OpenRouterClient.lua             → becomes ModuleScript
+│   ├── Context/
+│   │   ├── init.module.lua              → becomes ModuleScript named "init"
+│   │   ├── init.module.meta.json        → tells Rojo to name it "init"
+│   │   ├── CompressionFallback.lua
+│   │   ├── ContextSelector.lua
+│   │   └── SystemPrompt.lua
+│   └── [other folders...]
+└── default.project.json                 → Rojo configuration
+```
+
+### Critical Rojo Behavior
+
+**Why `init.module.lua` instead of `init.lua`?**
+
+Rojo has special handling for `init.lua` files:
+- When a directory contains `init.lua`, Rojo converts the ENTIRE directory into a ModuleScript
+- This breaks our desired structure where we want Folders containing separate ModuleScripts
+- Solution: Rename to `init.module.lua` and use `.meta.json` to set the name property to "init"
+
+**The `.meta.json` Pattern**
+
+Each `init.module.lua` needs a corresponding `init.module.meta.json`:
+```json
+{"properties": {"Name": "init"}}
+```
+
+This tells Rojo: "Keep this as a separate ModuleScript, but name it 'init' in Roblox"
+
+### Rojo Configuration (`default.project.json`)
+
+```json
+{
+  "name": "lux-agentic-ai",
+  "tree": {
+    "$className": "DataModel",
+    "ServerStorage": {
+      "$className": "ServerStorage",
+      "Lux": {
+        "$className": "Folder",
+        "Main": {
+          "$path": "Main.server.lua"
+        },
+        "src": {
+          "$path": "src"
+        }
+      }
+    }
+  }
+}
+```
+
+**Why so simple?**
+- We only need to specify the top-level structure
+- Rojo automatically syncs everything inside `src/` recursively
+- The `.meta.json` files handle the naming for init modules
+
+### Working with Rojo
+
+**Starting Rojo:**
+```bash
+rojo serve
+```
+
+**In Roblox Studio:**
+1. View → Show Command Bar
+2. Connect to Rojo (usually localhost:34872)
+3. Rojo will sync the file structure automatically
+
+**Making Changes:**
+- Edit `.lua` files in your IDE
+- Rojo automatically syncs changes to Roblox Studio
+- Changes appear in real-time (no manual save needed)
+
+### Adding New Modules
+
+**Adding a new module to an existing folder:**
+1. Create `NewModule.lua` in the desired folder (e.g., `src/Context/NewModule.lua`)
+2. Rojo will automatically sync it as a ModuleScript
+
+**Adding a new folder with modules:**
+1. Create the folder (e.g., `src/NewFeature/`)
+2. Add your module files (e.g., `Helper.lua`, `Manager.lua`)
+3. If you need an `init` module:
+   - Create `init.module.lua`
+   - Create `init.module.meta.json` with: `{"properties": {"Name": "init"}}`
+4. Rojo will automatically sync the entire folder
+
+### Troubleshooting
+
+**"ClassName conflict" error:**
+- This means Rojo is trying to convert a folder to a ModuleScript
+- Check if you accidentally named a file `init.lua` (should be `init.module.lua`)
+
+**"File not found" error:**
+- Restart Rojo: Stop the server and run `rojo serve` again
+- Check file permissions (should be readable)
+
+**Duplicates appearing in Studio:**
+- Delete everything under `ServerStorage/Lux` in Studio
+- Disconnect and reconnect to Rojo
+- Rojo will recreate the correct structure
+
+**Changes not syncing:**
+- Make sure Rojo is connected (check the Roblox Studio plugin)
+- Restart Rojo if needed
+- Check the Rojo output for errors
+
+### Module Import Pattern
+
+All modules use relative `require()` statements:
+
+```lua
+-- In src/Context/init.module.lua
+local Context = {
+    Selector = require(script.Parent.ContextSelector),
+    PromptBuilder = require(script.Parent.SystemPrompt),
+    Compression = require(script.Parent.CompressionFallback),
+}
+return Context
+```
+
+```lua
+-- In Main.server.lua
+local src = script.Parent.src
+local Core = require(src.Core.init)
+local Memory = require(src.Memory.init)
+-- etc.
+```
+
+### Why This Structure?
+
+1. **Modularity**: Each feature is in its own folder
+2. **Clean imports**: `init` modules provide clean API surfaces
+3. **Rojo compatibility**: Avoids Rojo's `init.lua` → ModuleScript conversion
+4. **Version control**: Easy to track changes in Git
+5. **IDE support**: Full autocomplete and navigation in VS Code
+
+### Git Ignore
+
+The `.meta.json` files MUST be committed to Git. They are essential for the Rojo setup to work correctly.
+
+**Do commit:**
+- `.lua` files
+- `.meta.json` files
+- `default.project.json`
+
+**Don't commit:**
+- `.rbxl` or `.rbxlx` files (Roblox place files)
+- Rojo build outputs

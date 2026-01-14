@@ -6,10 +6,11 @@
       "$className": "ServerStorage",
       "Lux": {
         "$className": "Folder",
-        "$path": "src",
         "Main": {
-          "$className": "Script",
-          "$path": "Main.lua"
+          "$path": "Main.server.lua"
+        },
+        "src": {
+          "$path": "src"
         }
       }
     }
