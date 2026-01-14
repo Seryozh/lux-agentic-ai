@@ -7,7 +7,7 @@ local Constants = {}
 
 -- Plugin Identity
 Constants.PLUGIN_NAME = "Lux"
-Constants.PLUGIN_VERSION = "2.0.4"
+Constants.PLUGIN_VERSION = "2.0.5"
 
 -- OpenRouter Configuration
 Constants.OPENROUTER_MODEL = "google/gemini-3-flash-preview" -- Main model (default)
@@ -19,14 +19,14 @@ Constants.AVAILABLE_MODELS = {
 		id = "google/gemini-3-flash-preview",
 		name = "Gemini 3 Flash",
 		description = "Fast & affordable. Great for most tasks.",
-		pricing = "$0.50/M input · $3/M output",
+		pricing = "$0.50/M input ï¿½ $3/M output",
 		isDefault = true
 	},
 	{
 		id = "google/gemini-3-pro-preview",
 		name = "Gemini 3 Pro",
 		description = "Most capable. Best for complex tasks.",
-		pricing = "$2/M input · $12/M output",
+		pricing = "$2/M input ï¿½ $12/M output",
 		isDefault = false
 	}
 }

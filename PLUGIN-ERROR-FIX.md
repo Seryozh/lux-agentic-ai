@@ -16,6 +16,15 @@ User **winpo1** reported that after restarting Roblox Studio, the Lux plugin but
 
 ## Root Cause
 
+Two contributing factors:
+
+### 1. Folder Rename Issue
+The plugin folder was renamed from the original name to `LuxAgenticAI`. When users who had the old version installed try to load the updated version:
+- Roblox's Cloud sync may have cached the old folder structure
+- References to `cloud_XXXXX.OldName` don't match `cloud_XXXXX.LuxAgenticAI`
+- Module loading fails with "invalid argument(s)" error
+
+### 2. Silent Failure on Error
 The plugin initialization code loaded modules **before** creating the toolbar button. If any module failed to load (due to corruption, installation issues, or Roblox Cloud sync problems), the entire plugin would fail silently - **no toolbar button, no error UI, nothing**.
 
 ## The Fix
@@ -114,10 +123,12 @@ validateModule(src, "UI")
 - **Fix**: Reinstall from Creator Store
 
 **Error: "Attempted to call require with invalid argument"**
-- **Cause**: Roblox Cloud sync issue or circular dependency
+- **Cause**: Roblox Cloud sync issue, folder structure mismatch from rename, or cached old version
 - **Fix**:
-  1. Restart Roblox Studio
-  2. If persists, reinstall plugin
+  1. **Completely close Roblox Studio** (not just the place)
+  2. **Reopen Studio** - this forces a fresh plugin cache
+  3. If still broken: **Uninstall the plugin**, restart Studio, then **reinstall from Creator Store**
+  4. This clears all cached references to the old folder structure
 
 **Error: "'Tools' is not a ModuleScript or Folder (found Script)"**
 - **Cause**: Plugin structure was modified incorrectly
@@ -134,23 +145,26 @@ Tell them:
 Thank you for reporting this issue! I've identified and fixed the problem.
 
 **What was wrong:**
-When the plugin modules failed to load (likely due to a Roblox Cloud sync issue), the toolbar button was never created, so it looked like the plugin completely disappeared.
+Two issues caused this:
+1. I renamed the plugin folder structure (which you might have had cached from before)
+2. When the plugin modules failed to load due to this mismatch, the toolbar button was never created, so it looked like the plugin completely disappeared.
 
 **What I fixed:**
 The plugin now **ALWAYS** creates a toolbar button, even if there's an error. If something goes wrong during loading, you'll see a "Lux Error" button instead of nothing.
 
 **What you should do:**
 1. **Wait for the next update** (I'll push this fix to the Creator Store)
-2. **Try these steps now** to see if it helps:
-   - Close Roblox Studio completely
-   - Reopen Studio
-   - Check if the Lux button appears now
-   - If you see "Lux Error" button, click it and check the Output window for the full error message
 
-3. **If still broken**, try:
-   - Uninstall the plugin
-   - Reinstall from Creator Store
-   - This usually fixes Cloud sync corruption issues
+2. **In the meantime, try this to fix it immediately:**
+   - **Completely close Roblox Studio** (File → Exit, not just close the place)
+   - **Uninstall the Lux plugin** from Plugins menu
+   - **Restart Studio again** (important! This clears the cache)
+   - **Reinstall from Creator Store**
+   - This should clear the old folder structure from cache
+
+3. **After the update is published:**
+   - The plugin will show an error button if something goes wrong instead of disappearing
+   - You'll get helpful troubleshooting info directly in Studio
 
 **Please let me know:**
 - Does the plugin work after restarting Studio?
@@ -206,9 +220,33 @@ The pcall approach is simpler and gives immediate feedback.
    - Answered widget size/position configuration question
    - Documented Constants.lua UI settings
 
+## Preventing This in the Future
+
+### Best Practices for Plugin Updates
+
+1. **Avoid renaming the main plugin folder** after initial publish
+   - Roblox caches plugins by structure, renames cause sync issues
+   - If rename is necessary, treat it as a completely new plugin
+
+2. **Always use version bumping** instead of structural changes
+   - Change `Constants.PLUGIN_VERSION` (e.g., "2.0.4" → "2.0.5")
+   - Keep folder structure identical
+
+3. **Test updates with fresh install**
+   - Uninstall local version
+   - Publish to Creator Store as "unlisted"
+   - Install from Store to test (mimics user experience)
+   - Then publish as public
+
+4. **Include error recovery** (which we now have!)
+   - Always create UI elements (toolbar) BEFORE risky operations
+   - Use pcall for module loading
+   - Provide helpful error messages
+
 ## Next Steps
 
 1. **Test the fix** locally
-2. **Publish update** to Creator Store
+2. **Publish update** to Creator Store with version bump (2.0.5)
 3. **Monitor** for similar reports
 4. **Consider** adding telemetry to track load failures (optional)
+5. **Document** the folder structure in a ROBLOX-PLUGIN-STRUCTURE.md file

@@ -1,6 +1,6 @@
 # Changelog
 
-## [2026-01-13] Critical Bug Fix - Plugin Loading Error
+## [2026-01-13] v2.0.5 - Critical Bug Fix - Plugin Loading Error
 
 ### Fixed
 - **Plugin disappearing after restart** - Added safe module loading with error recovery

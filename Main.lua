@@ -32,6 +32,26 @@ local success, loadError = pcall(function()
 		if not module:IsA("ModuleScript") and not module:IsA("Folder") then
 			error(string.format("[Lux] '%s' is not a ModuleScript or Folder (found %s). Plugin structure may be corrupted.", moduleName, module.ClassName))
 		end
+
+		-- If it's a folder, verify it has an init ModuleScript
+		if module:IsA("Folder") then
+			local initModule = module:FindFirstChild("init")
+			if not initModule then
+				error(string.format("[Lux] Folder '%s' is missing 'init' ModuleScript. Found children: %s",
+					moduleName,
+					table.concat((function()
+						local names = {}
+						for _, child in ipairs(module:GetChildren()) do
+							table.insert(names, child.Name .. " (" .. child.ClassName .. ")")
+						end
+						return names
+					end)(), ", ")))
+			end
+			if not initModule:IsA("ModuleScript") then
+				error(string.format("[Lux] Folder '%s' has 'init' but it's not a ModuleScript (found %s)", moduleName, initModule.ClassName))
+			end
+		end
+
 		return module
 	end
 
