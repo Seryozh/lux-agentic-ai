@@ -11,7 +11,7 @@
     Creator Store Compliant - No dynamic code execution
 ]]
 
-local Constants = require(script.Parent.Constants)
+local Constants = require(script.Parent.Parent.Shared.Constants)
 
 local SystemPrompt = {}
 

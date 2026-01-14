@@ -9,7 +9,7 @@
     4. Tracks progress against planned goals
 ]]
 
-local Constants = require(script.Parent.Constants)
+local Constants = require(script.Parent.Parent.Shared.Constants)
 local HttpService = game:GetService("HttpService")
 
 local TaskPlanner = {}

@@ -12,7 +12,7 @@
 ]]
 
 local HttpService = game:GetService("HttpService")
-local Constants = require(script.Parent.Constants)
+local Constants = require(script.Parent.Parent.Shared.Constants)
 
 local WorkingMemory = {}
 
@@ -416,7 +416,7 @@ function WorkingMemory._getTypeIcon(itemType)
 		search_result = "??",
 		general = "??"
 	}
-	return icons[itemType] or "•"
+	return icons[itemType] or "ï¿½"
 end
 
 -- ============================================================================

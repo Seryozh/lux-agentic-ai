@@ -9,7 +9,7 @@
     4. Provides context-aware error messages for the LLM
 ]]
 
-local Constants = require(script.Parent.Constants)
+local Constants = require(script.Parent.Parent.Shared.Constants)
 
 local ErrorAnalyzer = {}
 

@@ -9,8 +9,8 @@
     4. Basic Lua syntax validation (pattern-based, no execution)
 ]]
 
-local Constants = require(script.Parent.Constants)
-local Utils = require(script.Parent.Utils)
+local Constants = require(script.Parent.Parent.Shared.Constants)
+local Utils = require(script.Parent.Parent.Shared.Utils)
 
 local Verification = {}
 

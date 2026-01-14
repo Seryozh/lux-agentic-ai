@@ -12,8 +12,8 @@
     This prevents wasted iterations on obviously invalid operations.
 ]]
 
-local Constants = require(script.Parent.Constants)
-local Utils = require(script.Parent.Utils)
+local Constants = require(script.Parent.Parent.Shared.Constants)
+local Utils = require(script.Parent.Parent.Shared.Utils)
 
 local OutputValidator = {}
 
@@ -371,7 +371,7 @@ function OutputValidator.findSimilarPaths(targetPath)
 	local lastPart = targetParts[#targetParts]
 
 	-- Get all known scripts
-	local IndexManager = require(script.Parent.IndexManager)
+	local IndexManager = require(script.Parent.Parent.Shared.IndexManager)
 	local scanResult = IndexManager.scanScripts()
 
 	-- Score each script by similarity
@@ -445,7 +445,7 @@ function OutputValidator.formatForLLM(validation)
 	if #critical > 0 then
 		table.insert(parts, "\n?? CRITICAL (must fix):")
 		for _, issue in ipairs(critical) do
-			table.insert(parts, string.format("  • [%s] %s", issue.field, issue.message))
+			table.insert(parts, string.format("  ï¿½ [%s] %s", issue.field, issue.message))
 		end
 	end
 
@@ -453,7 +453,7 @@ function OutputValidator.formatForLLM(validation)
 	if #warnings > 0 then
 		table.insert(parts, "\n?? WARNINGS:")
 		for _, issue in ipairs(warnings) do
-			table.insert(parts, string.format("  • [%s] %s", issue.field, issue.message))
+			table.insert(parts, string.format("  ï¿½ [%s] %s", issue.field, issue.message))
 		end
 	end
 

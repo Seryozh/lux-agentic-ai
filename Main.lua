@@ -18,9 +18,9 @@ if not src then
 	error("[Lux] Cannot find 'src' folder. Make sure the plugin structure is correct:\nLux/\n  Main (Script)\n  src/ (Folder)")
 end
 
-local Constants = require(src.Constants)
-local Utils = require(src.Utils)
-local IndexManager = require(src.IndexManager)
+local Constants = require(src.Shared.Constants)
+local Utils = require(src.Shared.Utils)
+local IndexManager = require(src.Shared.IndexManager)
 local OpenRouterClient = require(src.OpenRouterClient)
 local Tools = require(src.Tools)
 

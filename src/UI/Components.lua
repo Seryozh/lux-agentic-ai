@@ -3,7 +3,7 @@
     Reusable UI component factories to reduce boilerplate
 ]]
 
-local Constants = require(script.Parent.Parent.Constants)
+local Constants = require(script.Parent.Parent.Shared.Constants)
 local Create = require(script.Parent.Create)
 
 local Components = {}

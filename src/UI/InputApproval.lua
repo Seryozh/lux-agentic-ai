@@ -4,9 +4,9 @@
     Enhanced with explanations and better UX
 ]]
 
-local Constants = require(script.Parent.Parent.Constants)
+local Constants = require(script.Parent.Parent.Shared.Constants)
 local Create = require(script.Parent.Create)
-local Utils = require(script.Parent.Parent.Utils)
+local Utils = require(script.Parent.Parent.Shared.Utils)
 
 local InputApproval = {}
 

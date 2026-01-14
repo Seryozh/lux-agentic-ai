@@ -4,7 +4,7 @@
     Enhanced with hover effects and better styling
 ]]
 
-local Constants = require(script.Parent.Parent.Constants)
+local Constants = require(script.Parent.Parent.Shared.Constants)
 local Create = require(script.Parent.Create)
 local Components = require(script.Parent.Components)
 

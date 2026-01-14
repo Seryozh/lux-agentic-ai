@@ -12,24 +12,24 @@
     Creator Store Compliant - Uses only static module references
 ]]
 
-local Constants = require(script.Parent.Constants)
+local Constants = require(script.Parent.Parent.Shared.Constants)
 
 -- ============================================================================
 -- MODULE REFERENCES (static requires for Creator Store compliance)
 -- ============================================================================
 
 -- Core modules (always available)
-local ErrorAnalyzer = require(script.Parent.ErrorAnalyzer)
-local TaskPlanner = require(script.Parent.TaskPlanner)
-local ContextSelector = require(script.Parent.ContextSelector)
-local ProjectContext = require(script.Parent.ProjectContext)
-local DecisionMemory = require(script.Parent.DecisionMemory)
+local ErrorAnalyzer = require(script.Parent.Parent.Safety.ErrorAnalyzer)
+local TaskPlanner = require(script.Parent.Parent.Planning.TaskPlanner)
+local ContextSelector = require(script.Parent.Parent.Context.ContextSelector)
+local ProjectContext = require(script.Parent.Parent.Memory.ProjectContext)
+local DecisionMemory = require(script.Parent.Parent.Memory.DecisionMemory)
 
 -- Safety modules (v2.0)
-local CircuitBreaker = require(script.Parent.CircuitBreaker)
-local OutputValidator = require(script.Parent.OutputValidator)
-local ErrorPredictor = require(script.Parent.ErrorPredictor)
-local WorkingMemory = require(script.Parent.WorkingMemory)
+local CircuitBreaker = require(script.Parent.Parent.Safety.CircuitBreaker)
+local OutputValidator = require(script.Parent.Parent.Safety.OutputValidator)
+local ErrorPredictor = require(script.Parent.Parent.Safety.ErrorPredictor)
+local WorkingMemory = require(script.Parent.Parent.Memory.WorkingMemory)
 
 local SessionManager = {}
 

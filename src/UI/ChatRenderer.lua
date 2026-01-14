@@ -5,9 +5,9 @@
     v1.4.0 - Collapsible containers (planning, tool groups) with expand/collapse
 ]]
 
-local Constants = require(script.Parent.Parent.Constants)
+local Constants = require(script.Parent.Parent.Shared.Constants)
 local Create = require(script.Parent.Create)
-local MarkdownParser = require(script.Parent.Parent.MarkdownParser)
+local MarkdownParser = require(script.Parent.Parent.Shared.MarkdownParser)
 
 local ChatRenderer = {}
 
@@ -1267,7 +1267,7 @@ function ChatRenderer.addVerificationPrompt(state, request, onResponse)
 		for i, suggestion in ipairs(request.suggestions) do
 			Create.new("TextLabel", {
 				Name = "Suggestion_" .. i,
-				Text = "• " .. suggestion,
+				Text = "ï¿½ " .. suggestion,
 				Size = UDim2.new(1, 0, 0, 16),
 				BackgroundTransparency = 1,
 				TextColor3 = Constants.COLORS.textSecondary,

@@ -13,9 +13,9 @@
     6. Context repair after failures
 ]]
 
-local Constants = require(script.Parent.Constants)
-local Utils = require(script.Parent.Utils)
-local ContextSelector = require(script.Parent.ContextSelector)
+local Constants = require(script.Parent.Parent.Shared.Constants)
+local Utils = require(script.Parent.Parent.Shared.Utils)
+local ContextSelector = require(script.Parent.Parent.Context.ContextSelector)
 
 local ToolResilience = {}
 

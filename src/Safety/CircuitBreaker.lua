@@ -10,7 +10,7 @@
     This provides a hard stop that ErrorAnalyzer's loop detection doesn't offer.
 ]]
 
-local Constants = require(script.Parent.Constants)
+local Constants = require(script.Parent.Parent.Shared.Constants)
 
 local CircuitBreaker = {}
 

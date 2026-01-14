@@ -3,7 +3,7 @@
     API Key Setup Modal and Settings Screen for BYOK (Bring Your Own Key) flow
 ]]
 
-local Constants = require(script.Parent.Parent.Constants)
+local Constants = require(script.Parent.Parent.Shared.Constants)
 local Create = require(script.Parent.Create)
 
 local KeySetup = {}

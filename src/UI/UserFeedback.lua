@@ -12,7 +12,7 @@
     - Always visible (renders in chat flow, not hidden at bottom)
 ]]
 
-local Constants = require(script.Parent.Parent.Constants)
+local Constants = require(script.Parent.Parent.Shared.Constants)
 
 local UserFeedback = {}
 
@@ -264,7 +264,7 @@ function UserFeedback.show(inputContainer, request, onResponse)
 		for i, suggestion in ipairs(request.suggestions) do
 			Create.new("TextLabel", {
 				Name = "Suggestion_" .. i,
-				Text = "• " .. suggestion,
+				Text = "ï¿½ " .. suggestion,
 				Size = UDim2.new(1, 0, 0, 14),
 				Position = UDim2.new(0, 0, 0, suggestionsEndY + ((i-1) * 16)),
 				BackgroundTransparency = 1,

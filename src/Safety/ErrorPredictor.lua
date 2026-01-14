@@ -11,8 +11,8 @@
     This catches ~80% of common errors before they waste an iteration.
 ]]
 
-local Constants = require(script.Parent.Constants)
-local Utils = require(script.Parent.Utils)
+local Constants = require(script.Parent.Parent.Shared.Constants)
+local Utils = require(script.Parent.Parent.Shared.Utils)
 
 local ErrorPredictor = {}
 
@@ -422,7 +422,7 @@ function ErrorPredictor.formatForLLM(assessment)
 	if #critical > 0 then
 		table.insert(parts, "\n?? CRITICAL RISKS:")
 		for _, risk in ipairs(critical) do
-			table.insert(parts, string.format("  • %s", risk.reason))
+			table.insert(parts, string.format("  ï¿½ %s", risk.reason))
 			table.insert(parts, string.format("    ? %s", risk.mitigation))
 		end
 	end
@@ -430,7 +430,7 @@ function ErrorPredictor.formatForLLM(assessment)
 	if #high > 0 then
 		table.insert(parts, "\n?? HIGH RISKS:")
 		for _, risk in ipairs(high) do
-			table.insert(parts, string.format("  • %s", risk.reason))
+			table.insert(parts, string.format("  ï¿½ %s", risk.reason))
 			table.insert(parts, string.format("    ? %s", risk.mitigation))
 		end
 	end
@@ -438,7 +438,7 @@ function ErrorPredictor.formatForLLM(assessment)
 	if #medium > 0 then
 		table.insert(parts, "\n?? MEDIUM RISKS:")
 		for _, risk in ipairs(medium) do
-			table.insert(parts, string.format("  • %s", risk.reason))
+			table.insert(parts, string.format("  ï¿½ %s", risk.reason))
 		end
 	end
 

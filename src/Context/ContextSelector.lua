@@ -9,9 +9,9 @@
     4. Returns only the most relevant context, saving tokens
 ]]
 
-local Constants = require(script.Parent.Constants)
-local IndexManager = require(script.Parent.IndexManager)
-local Utils = require(script.Parent.Utils)
+local Constants = require(script.Parent.Parent.Shared.Constants)
+local IndexManager = require(script.Parent.Parent.Shared.IndexManager)
+local Utils = require(script.Parent.Parent.Shared.Utils)
 
 local ContextSelector = {}
 
@@ -338,7 +338,7 @@ function ContextSelector.formatFreshnessWarnings()
 	if #highPriority > 0 then
 		table.insert(lines, "?? SCRIPTS MODIFIED SINCE LAST READ (re-read before editing):")
 		for _, item in ipairs(highPriority) do
-			table.insert(lines, string.format("  • %s", item.path))
+			table.insert(lines, string.format("  ï¿½ %s", item.path))
 		end
 	end
 
@@ -350,7 +350,7 @@ function ContextSelector.formatFreshnessWarnings()
 				break
 			end
 			local minutes = math.floor(item.timeSinceRead / 60)
-			table.insert(lines, string.format("  • %s (%d min ago)", item.path, minutes))
+			table.insert(lines, string.format("  ï¿½ %s (%d min ago)", item.path, minutes))
 		end
 	end
 
@@ -650,7 +650,7 @@ function ContextSelector.formatForPrompt(selection)
 
 		local flagStr = #flags > 0 and " " .. table.concat(flags, "") or ""
 
-		table.insert(lines, string.format("• %s (%s, %d lines)%s",
+		table.insert(lines, string.format("ï¿½ %s (%s, %d lines)%s",
 			scriptData.path,
 			scriptData.className,
 			scriptData.lineCount,
