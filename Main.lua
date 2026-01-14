@@ -12,24 +12,93 @@
 local HttpService = game:GetService("HttpService")
 local ChangeHistoryService = game:GetService("ChangeHistoryService")
 
--- Modules
-local src = script:FindFirstChild("src") or script.Parent:FindFirstChild("src")
-if not src then
-	error("[Lux] Cannot find 'src' folder. Make sure the plugin structure is correct:\nLux/\n  Main (Script)\n  src/ (Folder)")
+-- ============================================================================
+-- SAFE MODULE LOADING WITH FALLBACK ERROR UI
+-- ============================================================================
+
+local success, loadError = pcall(function()
+	-- Modules
+	local src = script:FindFirstChild("src") or script.Parent:FindFirstChild("src")
+	if not src then
+		error("[Lux] Cannot find 'src' folder. Make sure the plugin structure is correct:\nLux/\n  Main (Script)\n  src/ (Folder)")
+	end
+
+	-- Validate critical modules exist before requiring
+	local function validateModule(parent, moduleName)
+		local module = parent:FindFirstChild(moduleName)
+		if not module then
+			error(string.format("[Lux] Cannot find module '%s' in '%s'. Plugin structure may be corrupted.", moduleName, parent:GetFullName()))
+		end
+		if not module:IsA("ModuleScript") and not module:IsA("Folder") then
+			error(string.format("[Lux] '%s' is not a ModuleScript or Folder (found %s). Plugin structure may be corrupted.", moduleName, module.ClassName))
+		end
+		return module
+	end
+
+	validateModule(src, "Shared")
+	validateModule(src, "OpenRouterClient")
+	validateModule(src, "Tools")
+	validateModule(src, "UI")
+
+	return {
+		Constants = require(src.Shared.Constants),
+		Utils = require(src.Shared.Utils),
+		IndexManager = require(src.Shared.IndexManager),
+		OpenRouterClient = require(src.OpenRouterClient),
+		Tools = require(src.Tools),
+		Builder = require(src.UI.Builder),
+		ChatRenderer = require(src.UI.ChatRenderer),
+		InputApproval = require(src.UI.InputApproval),
+		UserFeedback = require(src.UI.UserFeedback),
+		KeySetup = require(src.UI.KeySetup),
+	}
+end)
+
+if not success then
+	-- CRITICAL ERROR: Show error toolbar and stop
+	warn("[Lux] CRITICAL ERROR during module loading:")
+	warn(loadError)
+
+	local toolbar = plugin:CreateToolbar("Lux AI")
+	local button = toolbar:CreateButton(
+		"Lux Error",
+		"Plugin failed to load - click for details",
+		"rbxasset://textures/ui/ErrorIcon.png",
+		"Error"
+	)
+
+	button.Click:Connect(function()
+		local errorMsg = string.format([[Lux Plugin Failed to Load
+
+Error: %s
+
+This usually happens if:
+1. The plugin was not installed correctly
+2. Plugin files are corrupted
+3. A recent update broke compatibility
+
+Try:
+1. Reinstall the plugin from Roblox Creator Store
+2. Check Output window for full error details
+3. Report this issue to the developer]], loadError)
+
+		warn(errorMsg)
+	end)
+
+	return -- Stop execution
 end
 
-local Constants = require(src.Shared.Constants)
-local Utils = require(src.Shared.Utils)
-local IndexManager = require(src.Shared.IndexManager)
-local OpenRouterClient = require(src.OpenRouterClient)
-local Tools = require(src.Tools)
-
--- UI Modules
-local Builder = require(src.UI.Builder)
-local ChatRenderer = require(src.UI.ChatRenderer)
-local InputApproval = require(src.UI.InputApproval)
-local UserFeedback = require(src.UI.UserFeedback)
-local KeySetup = require(src.UI.KeySetup)
+-- Unpack loaded modules
+local Constants = success.Constants
+local Utils = success.Utils
+local IndexManager = success.IndexManager
+local OpenRouterClient = success.OpenRouterClient
+local Tools = success.Tools
+local Builder = success.Builder
+local ChatRenderer = success.ChatRenderer
+local InputApproval = success.InputApproval
+local UserFeedback = success.UserFeedback
+local KeySetup = success.KeySetup
 
 if Constants.DEBUG then
 	print("[Lux DEBUG] Loading plugin v" .. Constants.PLUGIN_VERSION)
