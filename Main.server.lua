@@ -21,6 +21,7 @@ local src = script:FindFirstChild("src") or script.Parent:FindFirstChild("src")
 local Constants = require(src.Shared.Constants)
 local Utils = require(src.Shared.Utils)
 local IndexManager = require(src.Shared.IndexManager)
+local ProjectGraph = require(src.Shared.ProjectGraph)
 local OpenRouterClient = require(src.OpenRouterClient)
 local Tools = require(src.Tools.init)
 local Builder = require(src.UI.Builder)
@@ -28,6 +29,16 @@ local ChatRenderer = require(src.UI.ChatRenderer)
 local InputApproval = require(src.UI.InputApproval)
 local UserFeedback = require(src.UI.UserFeedback)
 local KeySetup = require(src.UI.KeySetup)
+local TaskPlanner = require(src.Planning.TaskPlanner)
+local CircuitBreaker = require(src.Safety.CircuitBreaker)
+local DecisionMemory = require(src.Memory.DecisionMemory)
+local ErrorPredictor = require(src.Safety.ErrorPredictor)
+
+-- Command Center UI modules (lazy-loaded)
+local CommandCenterBuilder = nil
+local RightPane = nil
+local LeftPane = nil
+local ToastManager = nil
 
 if Constants.DEBUG then
 	print("[Lux DEBUG] Loading plugin v" .. Constants.PLUGIN_VERSION)
@@ -72,6 +83,7 @@ local button = toolbar:CreateButton(
 	"rbxassetid://118528628257442",
 	"Lux Assistant"
 )
+button.ClickableWhenViewportHidden = true
 
 local widgetInfo = DockWidgetPluginGuiInfo.new(
 	Enum.InitialDockState.Right,
@@ -95,16 +107,88 @@ state.widget.ZIndexBehavior = Enum.ZIndexBehavior.Sibling -- Fix for ZIndex issu
 local buttons = Builder.createUI(state.widget, state)
 
 -- ============================================================================
+-- COMMAND CENTER SETUP (if enabled)
+-- ============================================================================
+
+local function setupCommandCenter()
+	if not state.commandCenterEnabled then return end
+
+	-- Lazy-load Command Center modules
+	CommandCenterBuilder = CommandCenterBuilder or require(src.UI.CommandCenterBuilder)
+	RightPane = RightPane or require(src.UI.Panes.RightPane)
+	LeftPane = LeftPane or require(src.UI.Panes.LeftPane)
+	ToastManager = ToastManager or require(src.UI.Widgets.ToastManager)
+
+	-- Initialize toast manager
+	if state.ui.mainFrame then
+		ToastManager.init(state.ui.mainFrame)
+	end
+
+	-- Note: RightPane and LeftPane are self-updating via SessionManager.OnUpdate events
+	-- They subscribe to changes internally and don't need external callbacks
+
+	-- Set up CircuitBreaker event callback for status bar
+	CircuitBreaker.onStatusChange = function(status)
+		if CommandCenterBuilder and CommandCenterBuilder.updateCircuitStatus then
+			CommandCenterBuilder.updateCircuitStatus(state, status)
+		end
+	end
+
+	-- Wire DecisionMemory to ToastManager for "Wisdom" feedback
+	DecisionMemory.onScriptFlagged = function(path, reason)
+		if ToastManager then
+			local shortPath = path and (path:match("[^.]+$") or path) or "unknown"
+			ToastManager.show("⚠️ " .. shortPath .. " flagged: " .. (reason or "issues detected"), "warning", 4)
+		end
+	end
+
+	-- Wire ErrorPredictor to ToastManager for risk notifications
+	ErrorPredictor.onRiskDetected = function(toolName, riskLevel, message)
+		if ToastManager and ToastManager.show then
+			local toastType = riskLevel == "critical" and "error" or "warning"
+			local shortMsg = message:sub(1, 60) .. (message:len() > 60 and "..." or "")
+			ToastManager.show(shortMsg, toastType, 3)
+		end
+	end
+
+	ErrorPredictor.onFailurePattern = function(toolName, failureCount)
+		if ToastManager and ToastManager.show then
+			ToastManager.show(
+				string.format("Pattern: %s failed %dx - try different approach", toolName, failureCount),
+				"warning",
+				4
+			)
+		end
+	end
+
+	if Constants.DEBUG then
+		print("[Lux DEBUG] Command Center mode enabled")
+	end
+end
+
+-- Initialize Command Center if in that mode
+setupCommandCenter()
+
+-- ============================================================================
 -- STATUS UI UPDATE
 -- ============================================================================
 
 local function updateStatusUI()
+	-- Command Center mode doesn't have statusPanel/statusLabel
+	if state.commandCenterEnabled then
+		-- In Command Center, chat is always enabled
+		state.chatEnabled = true
+		return
+	end
+
 	local statusText = ""
 	local I = Constants.ICONS
 
 	if state.status == "needs_key" then
 		statusText = I.KEY .. " <b>API Key Required</b>\n\nPlease enter your OpenRouter API key to get started."
-		state.ui.statusPanel.BackgroundColor3 = Constants.COLORS.backgroundLight
+		if state.ui.statusPanel then
+			state.ui.statusPanel.BackgroundColor3 = Constants.COLORS.backgroundLight
+		end
 
 	elseif state.status == "scanning" then
 		statusText = I.LOADING .. " <b>Scanning scripts...</b>"
@@ -114,40 +198,56 @@ local function updateStatusUI()
 		for location, count in pairs(state.errorBreakdown or {}) do
 			table.insert(breakdown, string.format("  %s %s: %d", I.BULLET, location, count))
 		end
-		statusText = string.format("%s <b>Too Many Scripts</b>\n\nFound %d scripts (max %d).\n\n%s",
-			I.ERROR, #state.scripts, Constants.MAX_SCRIPTS, table.concat(breakdown, "\n"))
-		state.ui.statusPanel.BackgroundColor3 = Color3.fromRGB(60, 30, 30)
+		statusText = string.format("%s <b>Too Many Items</b>\n\nFound %d items (max %d).\n\n%s",
+			I.ERROR, state.itemCount or 0, Constants.MAX_SCRIPTS, table.concat(breakdown, "\n"))
+		if state.ui.statusPanel then
+			state.ui.statusPanel.BackgroundColor3 = Color3.fromRGB(60, 30, 30)
+		end
 
 	elseif state.status == "empty" then
 		statusText = I.INFO .. " <b>No Scripts Yet</b>\n\nYour game has no scripts yet - that's fine!\n\nStart chatting with the AI to create scripts."
-		state.ui.statusPanel.BackgroundColor3 = Constants.COLORS.backgroundLight
+		if state.ui.statusPanel then
+			state.ui.statusPanel.BackgroundColor3 = Constants.COLORS.backgroundLight
+		end
 
 		-- Enable chat immediately even with 0 scripts
 		if not state.chatEnabled then
 			state.chatEnabled = true
-			state.ui.chatContainer.Visible = true
-			state.ui.statusPanel.Size = UDim2.new(1, 0, 0, 80)
+			if state.ui.chatContainer then
+				state.ui.chatContainer.Visible = true
+			end
+			if state.ui.statusPanel then
+				state.ui.statusPanel.Size = UDim2.new(1, 0, 0, 80)
+			end
 		end
 
 	elseif state.status == "ready" or state.status == "chatting" then
-		local scriptCount = #state.scripts
+		local scriptCount = state.scriptCount or 0
 		if scriptCount == 0 then
-			statusText = I.CHECK .. " <b>Ready to Chat!</b>\n\nNo scripts found. Ask the AI to help create scripts!"
+			statusText = I.CHECK .. " <b>Ready to Chat!</b>\n\nNo items found. Ask the AI to help create scripts!"
 		else
-			statusText = string.format("%s <b>Ready to Chat!</b>\n\nFound %d scripts. Ask questions or request changes!",
-				I.CHECK, scriptCount)
+			statusText = string.format("%s <b>Ready to Chat!</b>\n\nFound %d items. Ask questions or request architecture changes!",
+				I.CHECK, state.itemCount or scriptCount)
 		end
-		state.ui.statusPanel.BackgroundColor3 = Constants.COLORS.backgroundLight
+		if state.ui.statusPanel then
+			state.ui.statusPanel.BackgroundColor3 = Constants.COLORS.backgroundLight
+		end
 
 		-- Show chat UI
 		if not state.chatEnabled then
 			state.chatEnabled = true
-			state.ui.chatContainer.Visible = true
-			state.ui.statusPanel.Size = UDim2.new(1, 0, 0, 80)
+			if state.ui.chatContainer then
+				state.ui.chatContainer.Visible = true
+			end
+			if state.ui.statusPanel then
+				state.ui.statusPanel.Size = UDim2.new(1, 0, 0, 80)
+			end
 		end
 	end
 
-	state.ui.statusLabel.Text = statusText
+	if state.ui.statusLabel then
+		state.ui.statusLabel.Text = statusText
+	end
 end
 
 local function updateTokenUI()
@@ -185,20 +285,31 @@ end
 
 local function scanAndUpdateUI()
 	if Constants.DEBUG then
-		print("[Lux DEBUG] Scanning scripts...")
+		print("[Lux DEBUG] Scanning project structure...")
 	end
 
 	state.status = "scanning"
 	updateStatusUI()
 
-	local result = IndexManager.scanScripts()
-	state.scripts = result.scripts
+	local result = IndexManager.scanScriptsAsync()
 
-	if Constants.DEBUG then
-		print(string.format("[Lux DEBUG] Found %d scripts", result.totalCount))
+	-- Update state with new structure
+	state.itemCount = result.totalCount
+	state.scripts = {}
+	state.scriptCount = 0
+
+	for _, item in ipairs(result.items or {}) do
+		if item.type == "script" then
+			table.insert(state.scripts, item)
+			state.scriptCount = state.scriptCount + 1
+		end
 	end
 
-	if result.totalCount > Constants.MAX_SCRIPTS then
+	if Constants.DEBUG then
+		print(string.format("[Lux DEBUG] Found %d total items (%d scripts)", state.itemCount, state.scriptCount))
+	end
+
+	if state.itemCount > Constants.MAX_SCRIPTS then
 		state.status = "error"
 		state.errorBreakdown = result.breakdown
 		warn(string.format("[Lux] ERROR: Too many scripts (%d > %d)", result.totalCount, Constants.MAX_SCRIPTS))
@@ -209,6 +320,9 @@ local function scanAndUpdateUI()
 	end
 
 	updateStatusUI()
+
+	-- Note: LeftPane builds its own file tree on initialization via IndexManager.scanScriptsAsync()
+	-- No need to manually update it here - it's self-contained
 end
 
 --[[
@@ -337,8 +451,18 @@ end
     @param operation table - Operation awaiting approval
 ]]
 local function handleApproval(operation)
-	-- Get input container
-	local inputContainer = state.ui.mainFrame:FindFirstChild("ChatContainer"):FindFirstChild("InputContainer")
+	-- Get input container - different location in Command Center vs Classic mode
+	local inputContainer
+	if state.commandCenterEnabled then
+		-- In Command Center, InputArea is a direct child of MainFrame
+		inputContainer = state.ui.mainFrame:FindFirstChild("InputArea")
+	else
+		-- In Classic mode, InputContainer is inside ChatContainer
+		local chatContainer = state.ui.mainFrame:FindFirstChild("ChatContainer")
+		if chatContainer then
+			inputContainer = chatContainer:FindFirstChild("InputContainer")
+		end
+	end
 
 	if not inputContainer then
 		warn("[Lux] Could not find InputContainer for approval prompt")
@@ -461,7 +585,7 @@ function handleAgentResponse(response)
 		if response.thinkingText and response.thinkingText ~= "" then
 			-- Only show if we haven't shown this exact text before (avoid duplicates)
 			local trimmedText = Utils.trim(response.thinkingText)
-			if trimmedText ~= "" and not state.lastShownThinkingText or state.lastShownThinkingText ~= trimmedText then
+			if trimmedText ~= "" and (not state.lastShownThinkingText or state.lastShownThinkingText ~= trimmedText) then
 				state.lastShownThinkingText = trimmedText
 				ChatRenderer.addMessage(state, "assistant", trimmedText)
 			end
@@ -482,7 +606,7 @@ function handleAgentResponse(response)
 		-- Show AI's context text if any
 		if response.thinkingText and response.thinkingText ~= "" then
 			local trimmedText = Utils.trim(response.thinkingText)
-			if trimmedText ~= "" and not state.lastShownThinkingText or state.lastShownThinkingText ~= trimmedText then
+			if trimmedText ~= "" and (not state.lastShownThinkingText or state.lastShownThinkingText ~= trimmedText) then
 				state.lastShownThinkingText = trimmedText
 				ChatRenderer.addMessage(state, "assistant", trimmedText)
 			end
@@ -548,6 +672,21 @@ function handleAgentResponse(response)
 end
 
 local function sendChatMessage(message)
+	-- Handle Chat Commands
+	if message:match("^/map") or message:match("^/graph") then
+		ChatRenderer.addMessage(state, "user", message)
+		state.ui.textInput.Text = ""
+		
+		ChatRenderer.addMessage(state, "system", "🗺️ Rebuilding architecture map...")
+		
+		task.spawn(function()
+			ProjectGraph.rebuildAsync()
+			local overview = ProjectGraph.getArchitectureOverview()
+			ChatRenderer.addMessage(state, "assistant", "Architecture Map Rebuilt:\n\n" .. overview)
+		end)
+		return
+	end
+
 	if state.isProcessing then
 		warn("[Lux] Already processing a message, please wait...")
 		return
@@ -579,6 +718,12 @@ local function sendChatMessage(message)
 
 	-- Reset thinking text tracker for new conversation turn
 	state.lastShownThinkingText = nil
+
+	-- IMMEDIATE: Begin analysis phase in Mission pane (Phase 3 - Pre-Planning)
+	-- This fires BEFORE the AI call, giving users instant feedback
+	if state.commandCenterEnabled and TaskPlanner.beginAnalysis then
+		TaskPlanner.beginAnalysis(message)
+	end
 
 	-- Disable input while processing (edge case #17)
 	state.isProcessing = true
@@ -653,12 +798,14 @@ state.widget:GetPropertyChangedSignal("Enabled"):Connect(function()
 	end
 end)
 
--- Rescan button
-buttons.rescanButton.MouseButton1Click:Connect(function()
-	if not state.isProcessing then
-		scanAndUpdateUI()
-	end
-end)
+-- Rescan button (only exists in classic mode)
+if buttons.rescanButton then
+	buttons.rescanButton.MouseButton1Click:Connect(function()
+		if not state.isProcessing then
+			scanAndUpdateUI()
+		end
+	end)
+end
 
 -- Reset Context button (both the original and the header button)
 local function performContextReset()
@@ -746,10 +893,11 @@ local function performContextReset()
 			confirmDialog.Enabled = false
 			confirmDialog:Destroy()
 
-			-- Perform the actual reset
-			OpenRouterClient.resetConversation()
+		-- Perform the actual reset
+		OpenRouterClient.resetConversation()
+		TaskPlanner.resetSession()
 
-			-- Clear chat UI
+		-- Clear chat UI
 			for _, message in ipairs(state.ui.chatHistory:GetChildren()) do
 				if message:IsA("Frame") then
 					message:Destroy()
@@ -772,10 +920,15 @@ local function performContextReset()
 	end
 end
 
-buttons.resetContextButton.MouseButton1Click:Connect(performContextReset)
+-- Reset context button (only exists in classic mode)
+if buttons.resetContextButton then
+	buttons.resetContextButton.MouseButton1Click:Connect(performContextReset)
+end
 
--- Header reset button (always visible during chat)
-buttons.headerResetButton.MouseButton1Click:Connect(performContextReset)
+-- Header reset button (always visible during chat - exists in both modes)
+if buttons.headerResetButton then
+	buttons.headerResetButton.MouseButton1Click:Connect(performContextReset)
+end
 
 -- Settings button (model selection and API key)
 buttons.settingsButton.MouseButton1Click:Connect(function()
@@ -839,6 +992,21 @@ plugin.Unloading:Connect(function()
 	state.isProcessing = false
 	OpenRouterClient.resetConversation()
 	KeySetup.hide()
+
+	-- Cleanup pane janitors (reactive UI cleanup)
+	if state.ui then
+		if state.ui.leftPaneJanitor then
+			state.ui.leftPaneJanitor:Cleanup()
+		end
+		if state.ui.rightPaneJanitor then
+			state.ui.rightPaneJanitor:Cleanup()
+		end
+	end
+end)
+
+-- Kick off ProjectGraph rebuild shortly after startup
+task.delay(2, function()
+	ProjectGraph.rebuildAsync()
 end)
 
 if Constants.DEBUG then

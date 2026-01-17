@@ -1,18 +1,27 @@
 --[[
     TaskPlanner.lua
-    Intelligent task analysis, planning, and self-reflection system
+    Intelligent task analysis, planning, and ticket-based execution system
     
-    This module adds "thinking before acting" to the agentic loop:
-    1. Analyzes user requests to understand complexity
-    2. Creates execution plans for complex tasks
-    3. Triggers self-reflection at key checkpoints
-    4. Tracks progress against planned goals
+    This module implements the "Living Plan" architecture:
+    1. Hybrid Complexity: Fast heuristic + AI validation/escalation
+    2. Ticket-Based Planning: State-machine tracking for actionable units
+    3. Self-Healing: Dynamic plan updates on tool failure
 ]]
 
 local Constants = require(script.Parent.Parent.Shared.Constants)
 local HttpService = game:GetService("HttpService")
 
 local TaskPlanner = {}
+
+-- ============================================================================
+-- EVENT CALLBACKS (for Command Center UI integration)
+-- ============================================================================
+
+-- These callbacks are set by the UI to receive updates
+TaskPlanner.onTicketUpdate = nil   -- function(ticketId, status, output)
+TaskPlanner.onPlanCreated = nil    -- function(plan)
+TaskPlanner.onPlanCleared = nil    -- function()
+TaskPlanner.onAnalysisStart = nil  -- function(message) - Fires IMMEDIATELY when user sends message
 
 -- ============================================================================
 -- STATE
@@ -25,10 +34,9 @@ local recentFailures = {}
 local sessionHistory = {} -- Track high-level actions this session
 
 -- ============================================================================
--- TASK COMPLEXITY ANALYSIS
+-- TASK COMPLEXITY ANALYSIS (Heuristic)
 -- ============================================================================
 
--- Keywords that indicate different complexities
 local COMPLEXITY_INDICATORS = {
 	simple = {
 		keywords = { "change", "fix", "update", "set", "get", "read", "check", "look" },
@@ -39,12 +47,11 @@ local COMPLEXITY_INDICATORS = {
 		patterns = { "^add%s+a", "^create%s+a", "^make%s+a" }
 	},
 	complex = {
-		keywords = { "system", "complete", "full", "entire", "refactor", "redesign", "integrate" },
+		keywords = { "system", "complete", "full", "entire", "refactor", "redesign", "integrate", "architecture" },
 		patterns = { "with%s+.+%s+and%s+.+%s+and", "complete%s+.+%s+system", "refactor%s+all" }
 	}
 }
 
--- Capabilities required for different task types
 local CAPABILITY_DETECTION = {
 	{ pattern = "script", capability = "script_editing" },
 	{ pattern = "code", capability = "script_editing" },
@@ -64,7 +71,7 @@ local CAPABILITY_DETECTION = {
 }
 
 --[[
-    Analyze a user message to determine task complexity and requirements
+    Analyze a user message to determine HEURISTIC task complexity
     @param message string - User's request
     @return table - Analysis result
 ]]
@@ -85,7 +92,7 @@ function TaskPlanner.analyzeTask(message)
 		capabilities = {},
 		shouldPlan = false,
 		riskLevel = "low",
-		suggestedApproach = nil
+		heuristicSuggestion = "simple"
 	}
 
 	-- Detect required capabilities
@@ -99,674 +106,366 @@ function TaskPlanner.analyzeTask(message)
 		table.insert(analysis.capabilities, cap)
 	end
 
-	-- Score complexity based on indicators
 	local complexityScore = 0
 
-	-- Check simple indicators (negative score)
+	-- Heuristic Scoring
 	for _, keyword in ipairs(COMPLEXITY_INDICATORS.simple.keywords) do
-		if lowerMessage:find(keyword) then
-			complexityScore = complexityScore - 1
-		end
+		if lowerMessage:find(keyword) then complexityScore = complexityScore - 1 end
 	end
-	for _, pattern in ipairs(COMPLEXITY_INDICATORS.simple.patterns) do
-		if lowerMessage:match(pattern) then
-			complexityScore = complexityScore - 2
-		end
-	end
-
-	-- Check medium indicators
 	for _, keyword in ipairs(COMPLEXITY_INDICATORS.medium.keywords) do
-		if lowerMessage:find(keyword) then
-			complexityScore = complexityScore + 1
-		end
+		if lowerMessage:find(keyword) then complexityScore = complexityScore + 1 end
 	end
-	for _, pattern in ipairs(COMPLEXITY_INDICATORS.medium.patterns) do
-		if lowerMessage:match(pattern) then
-			complexityScore = complexityScore + 2
-		end
-	end
-
-	-- Check complex indicators
 	for _, keyword in ipairs(COMPLEXITY_INDICATORS.complex.keywords) do
-		if lowerMessage:find(keyword) then
-			complexityScore = complexityScore + 3
-		end
-	end
-	for _, pattern in ipairs(COMPLEXITY_INDICATORS.complex.patterns) do
-		if lowerMessage:match(pattern) then
-			complexityScore = complexityScore + 5
-		end
+		if lowerMessage:find(keyword) then complexityScore = complexityScore + 3 end
 	end
 
-	-- Factor in number of capabilities
 	complexityScore = complexityScore + (#analysis.capabilities * 2)
 
-	-- Determine complexity level
 	if complexityScore <= Constants.PLANNING.complexityThresholds.simple then
 		analysis.complexity = "simple"
-		analysis.estimatedSteps = math.max(1, math.min(2, complexityScore + 2))
 	elseif complexityScore <= Constants.PLANNING.complexityThresholds.medium then
 		analysis.complexity = "medium"
-		analysis.estimatedSteps = math.max(3, math.min(5, math.floor(complexityScore / 2)))
 	else
 		analysis.complexity = "complex"
-		analysis.estimatedSteps = math.max(6, math.min(Constants.PLANNING.maxPlanSteps, math.floor(complexityScore / 2)))
 	end
 
-	-- Should we create a detailed plan?
+	analysis.heuristicSuggestion = analysis.complexity
 	analysis.shouldPlan = analysis.complexity ~= "simple"
-
-	-- Risk assessment
-	if lowerMessage:find("delete") or lowerMessage:find("remove") or lowerMessage:find("destroy") then
-		analysis.riskLevel = "high"
-	elseif lowerMessage:find("edit") or lowerMessage:find("modify") or lowerMessage:find("change") then
-		analysis.riskLevel = "medium"
-	end
-
-	-- Suggest approach based on analysis
-	if analysis.complexity == "complex" then
-		analysis.suggestedApproach = "Break this into phases: 1) Understand existing code, 2) Plan changes, 3) Implement incrementally, 4) Verify each step"
-	elseif analysis.complexity == "medium" then
-		analysis.suggestedApproach = "Read relevant code first, then implement with verification"
-	else
-		analysis.suggestedApproach = "Direct implementation with verification"
-	end
-
-	if Constants.DEBUG then
-		print(string.format("[TaskPlanner] Analysis: complexity=%s, steps=%d, capabilities=%s, shouldPlan=%s",
-			analysis.complexity,
-			analysis.estimatedSteps,
-			table.concat(analysis.capabilities, ","),
-			tostring(analysis.shouldPlan)
-			))
-	end
 
 	return analysis
 end
 
 -- ============================================================================
--- PLANNING
+-- PLANNING (Ticket-Based)
 -- ============================================================================
 
 --[[
-    Create an execution plan for a task
-    @param message string - User's request
-    @param analysis table - Result from analyzeTask
-    @return table - Execution plan
+    Create a new living plan with tickets
+    @param message string - Original request
+    @param analysis table - From analyzeTask
+    @return table - Living plan
 ]]
 function TaskPlanner.createPlan(message, analysis)
-	if not analysis.shouldPlan then
-		return nil
-	end
-
 	local plan = {
 		id = HttpService:GenerateGUID(false),
-		originalRequest = message,
+		goal = message,
 		complexity = analysis.complexity,
-		estimatedSteps = analysis.estimatedSteps,
-		capabilities = analysis.capabilities,
-		phases = {},
-		currentPhase = 1,
-		currentStep = 0,
-		status = "pending", -- pending, in_progress, completed, failed
+		status = "in_progress",
+		tickets = {},
+		currentTicketId = 1,
 		createdAt = tick(),
-		completedSteps = {},
-		failedSteps = {}
+		heuristic = analysis.heuristicSuggestion
 	}
 
-	-- Generate phases based on capabilities
-	local phaseOrder = {
-		{ cap = "script_editing", phase = "understanding", description = "Read and understand existing code" },
-		{ cap = "ui_creation", phase = "structure", description = "Create UI structure (containers first)" },
-		{ cap = "instance_creation", phase = "creation", description = "Create required instances" },
-		{ cap = "data_management", phase = "data_layer", description = "Set up data handling" },
-		{ cap = "networking", phase = "networking", description = "Implement client-server communication" },
-	}
-
-	-- Always start with understanding
-	table.insert(plan.phases, {
-		name = "understanding",
-		description = "Understand the current state",
-		status = "pending",
-		steps = { "Inspect relevant instances", "Read related scripts if any" }
+	-- Initial template tickets (AI will evolve these)
+	table.insert(plan.tickets, {
+		id = 1,
+		text = "Scan and understand current project state",
+		status = "PENDING",
+		type = "discovery"
 	})
 
-	-- Add phases based on detected capabilities
-	local addedPhases = { understanding = true }
-	for _, capability in ipairs(analysis.capabilities) do
-		for _, phaseInfo in ipairs(phaseOrder) do
-			if phaseInfo.cap == capability and not addedPhases[phaseInfo.phase] then
-				table.insert(plan.phases, {
-					name = phaseInfo.phase,
-					description = phaseInfo.description,
-					status = "pending",
-					steps = {}
-				})
-				addedPhases[phaseInfo.phase] = true
-			end
-		end
+	if analysis.complexity == "complex" then
+		table.insert(plan.tickets, {
+			id = 2,
+			text = "Implement core logic/structure",
+			status = "PENDING"
+		})
+		table.insert(plan.tickets, {
+			id = 3,
+			text = "Verify functionality and performance",
+			status = "PENDING"
+		})
+	else
+		table.insert(plan.tickets, {
+			id = 2,
+			text = "Implement requested change",
+			status = "PENDING"
+		})
 	end
-
-	-- Always end with verification
-	table.insert(plan.phases, {
-		name = "verification",
-		description = "Verify all changes work correctly",
-		status = "pending",
-		steps = { "Check created instances exist", "Verify script functionality" }
-	})
 
 	currentPlan = plan
 
-	if Constants.DEBUG then
-		print(string.format("[TaskPlanner] Created plan: %d phases, %d estimated steps",
-			#plan.phases, plan.estimatedSteps))
+	-- Fire event callback
+	if TaskPlanner.onPlanCreated then
+		TaskPlanner.onPlanCreated(plan)
 	end
 
 	return plan
 end
 
 --[[
-    Update plan progress after a step completes
-    @param stepDescription string - What was done
-    @param success boolean - Whether it succeeded
+    Update a ticket's state
+    @param ticketId number
+    @param status string - PENDING, RUNNING, DONE, FAILED, RETRYING
+    @param output any - Optional tool output or notes
 ]]
-function TaskPlanner.recordStep(stepDescription, success)
+function TaskPlanner.updateTicket(ticketId, status, output)
 	if not currentPlan then return end
 
-	currentPlan.currentStep = currentPlan.currentStep + 1
+	for _, ticket in ipairs(currentPlan.tickets) do
+		if ticket.id == ticketId then
+			ticket.status = status
+			if output then ticket.output = output end
 
-	local stepRecord = {
-		step = currentPlan.currentStep,
-		description = stepDescription,
-		success = success,
-		timestamp = tick()
+			if status == "RUNNING" then
+				currentPlan.currentTicketId = ticketId
+			end
+
+			if status == "FAILED" then
+				table.insert(recentFailures, {
+					ticketId = ticketId,
+					error = output,
+					timestamp = tick()
+				})
+			end
+
+			-- Fire event callback for UI update
+			if TaskPlanner.onTicketUpdate then
+				TaskPlanner.onTicketUpdate(ticketId, status, output)
+			end
+
+			break
+		end
+	end
+end
+
+--[[
+    Add a new ticket to the plan dynamically (Self-healing)
+    @param text string
+    @param afterId number? - Insert after this ID
+]]
+function TaskPlanner.addTicket(text, afterId)
+	if not currentPlan then return end
+
+	-- ZOMBIE KILLER: Remove "analysis" ticket when adding first real ticket
+	if #currentPlan.tickets == 1 and currentPlan.tickets[1].type == "analysis" then
+		currentPlan.tickets = {}  -- Clear the zombie
+	end
+
+	local newId = #currentPlan.tickets + 1
+	local newTicket = {
+		id = newId,
+		text = text,
+		status = "PENDING"
 	}
 
-	if success then
-		table.insert(currentPlan.completedSteps, stepRecord)
-	else
-		table.insert(currentPlan.failedSteps, stepRecord)
-	end
-
-	-- Track in session history
-	table.insert(sessionHistory, {
-		action = stepDescription,
-		success = success,
-		timestamp = tick()
-	})
-
-	if Constants.DEBUG then
-		print(string.format("[TaskPlanner] Step %d: %s (%s)",
-			currentPlan.currentStep,
-			stepDescription:sub(1, 50),
-			success and "success" or "failed"
-			))
-	end
-end
-
---[[
-    Get current plan if any
-    @return table|nil
-]]
-function TaskPlanner.getCurrentPlan()
-	return currentPlan
-end
-
---[[
-    Clear current plan
-]]
-function TaskPlanner.clearPlan()
-	if currentPlan then
-		if Constants.DEBUG then
-			print(string.format("[TaskPlanner] Plan cleared. Completed %d/%d steps",
-				#currentPlan.completedSteps,
-				currentPlan.currentStep
-				))
-		end
-	end
-	currentPlan = nil
-end
-
--- ============================================================================
--- SELF-REFLECTION
--- ============================================================================
-
---[[
-    Check if reflection is due
-    @return boolean
-]]
-function TaskPlanner.isReflectionDue()
-	if not Constants.PLANNING.enabled then
-		return false
-	end
-
-	-- Reflection due if:
-	-- 1. We've done N tool calls since last reflection
-	-- 2. We just had a failure and reflectionOnFailure is enabled
-	-- 3. Manually flagged
-
-	if reflectionDue then
-		return true
-	end
-
-	if toolCallsSinceReflection >= Constants.PLANNING.reflectionInterval then
-		return true
-	end
-
-	return false
-end
-
---[[
-    Record that a tool was called
-    @param toolName string
-    @param success boolean
-]]
-function TaskPlanner.recordToolCall(toolName, success)
-	toolCallsSinceReflection = toolCallsSinceReflection + 1
-
-	if not success then
-		table.insert(recentFailures, {
-			tool = toolName,
-			timestamp = tick()
-		})
-
-		-- Purge old failures (older than 60 seconds)
-		local now = tick()
-		local fresh = {}
-		for _, failure in ipairs(recentFailures) do
-			if now - failure.timestamp < 60 then
-				table.insert(fresh, failure)
+	if afterId then
+		local insertAt = 1
+		for i, ticket in ipairs(currentPlan.tickets) do
+			if ticket.id == afterId then
+				insertAt = i + 1
+				break
 			end
 		end
-		recentFailures = fresh
-
-		-- Flag for reflection if enabled
-		if Constants.PLANNING.reflectionOnFailure then
-			reflectionDue = true
+		table.insert(currentPlan.tickets, insertAt, newTicket)
+		-- Renumber subsequent tickets to maintain order
+		for i = insertAt + 1, #currentPlan.tickets do
+			currentPlan.tickets[i].id = i
 		end
+	else
+		table.insert(currentPlan.tickets, newTicket)
+	end
+
+	-- Auto-escalate if plan grows large
+	if #currentPlan.tickets > 5 and currentPlan.complexity ~= "complex" then
+		currentPlan.complexity = "complex"
 	end
 end
 
 --[[
-    Acknowledge that reflection was done
+    Get formatted living plan for display / system prompt
+    @return string
 ]]
+function TaskPlanner.formatPlan()
+	if not currentPlan then return "" end
+
+	local parts = { string.format("\n### ?? Living Plan: %s\n", currentPlan.complexity:upper()) }
+	
+	for _, ticket in ipairs(currentPlan.tickets) do
+		local icon = "⬜"
+		if ticket.status == "DONE" then icon = "✅"
+		elseif ticket.status == "RUNNING" then icon = "🔄"
+		elseif ticket.status == "FAILED" then icon = "❌"
+		elseif ticket.status == "RETRYING" then icon = "⚠" end
+		
+		local line = string.format("%s %s", icon, ticket.text)
+		if ticket.status == "RUNNING" and ticket.tool then
+			line = line .. string.format(" (Active: `%s`)", ticket.tool)
+		end
+		table.insert(parts, line)
+	end
+
+	return table.concat(parts, "\n")
+end
+
+-- ============================================================================
+-- PRE-PLANNING (Immediate UI Feedback)
+-- ============================================================================
+
+--[[
+    Called IMMEDIATELY when user sends a message
+    Creates a preliminary "Analyzing..." plan so Mission pane updates instantly
+    @param message string - User's request
+    @return table - Preliminary plan for immediate display
+]]
+function TaskPlanner.beginAnalysis(message)
+	-- Clear any existing plan
+	if currentPlan then
+		TaskPlanner.clearPlan()
+	end
+
+	-- Create preliminary plan immediately
+	local prelimPlan = {
+		id = HttpService:GenerateGUID(false),
+		goal = message:sub(1, 50) .. (message:len() > 50 and "..." or ""),
+		complexity = "analyzing",
+		status = "analyzing",
+		tickets = {
+			{
+				id = 1,
+				text = "Analyzing request...",
+				status = "RUNNING",
+				type = "analysis"
+			}
+		},
+		currentTicketId = 1,
+		createdAt = tick(),
+		isPreliminary = true
+	}
+
+	currentPlan = prelimPlan
+
+	-- Fire immediate callback for UI
+	if TaskPlanner.onAnalysisStart then
+		TaskPlanner.onAnalysisStart(message)
+	end
+
+	if TaskPlanner.onPlanCreated then
+		TaskPlanner.onPlanCreated(prelimPlan)
+	end
+
+	return prelimPlan
+end
+
+--[[
+    Finalize analysis and update plan with actual tickets
+    Called after AI determines the actual plan steps
+    @param analysis table - From analyzeTask()
+    @param aiSteps table|nil - Optional AI-generated steps
+]]
+function TaskPlanner.finalizeAnalysis(analysis, aiSteps)
+	if not currentPlan then return end
+
+	-- Update the plan with real complexity
+	currentPlan.complexity = analysis.complexity
+	currentPlan.status = "in_progress"
+	currentPlan.isPreliminary = false
+
+	-- Mark analysis ticket as done
+	if currentPlan.tickets[1] and currentPlan.tickets[1].type == "analysis" then
+		currentPlan.tickets[1].status = "DONE"
+		currentPlan.tickets[1].text = "Request analyzed"
+	end
+
+	-- Add real tickets based on analysis
+	local nextId = 2
+
+	if aiSteps and #aiSteps > 0 then
+		-- Use AI-generated steps
+		for _, step in ipairs(aiSteps) do
+			table.insert(currentPlan.tickets, {
+				id = nextId,
+				text = step,
+				status = "PENDING"
+			})
+			nextId = nextId + 1
+		end
+	else
+		-- Use heuristic-based tickets
+		if analysis.complexity == "complex" then
+			table.insert(currentPlan.tickets, { id = nextId, text = "Understand project structure", status = "PENDING" })
+			nextId = nextId + 1
+			table.insert(currentPlan.tickets, { id = nextId, text = "Implement core changes", status = "PENDING" })
+			nextId = nextId + 1
+			table.insert(currentPlan.tickets, { id = nextId, text = "Verify and test", status = "PENDING" })
+		elseif analysis.complexity == "medium" then
+			table.insert(currentPlan.tickets, { id = nextId, text = "Locate target files", status = "PENDING" })
+			nextId = nextId + 1
+			table.insert(currentPlan.tickets, { id = nextId, text = "Make changes", status = "PENDING" })
+		else
+			table.insert(currentPlan.tickets, { id = nextId, text = "Execute request", status = "PENDING" })
+		end
+	end
+
+	-- Auto-escalate if many steps
+	if #currentPlan.tickets > Constants.PLANNING.aiEscalationThreshold then
+		currentPlan.complexity = "complex"
+	end
+
+	-- Notify UI of updated plan
+	if TaskPlanner.onPlanCreated then
+		TaskPlanner.onPlanCreated(currentPlan)
+	end
+end
+
+-- ============================================================================
+-- AGENTIC LOOP INTEGRATION
+-- ============================================================================
+
+function TaskPlanner.getCurrentPlan() return currentPlan end
+
+function TaskPlanner.clearPlan()
+	currentPlan = nil
+	-- Fire event callback
+	if TaskPlanner.onPlanCleared then
+		TaskPlanner.onPlanCleared()
+	end
+end
+
+function TaskPlanner.recordToolCall(toolName, success)
+	toolCallsSinceReflection = toolCallsSinceReflection + 1
+	if not success then
+		reflectionDue = true
+	end
+end
+
+function TaskPlanner.isReflectionDue()
+	return reflectionDue or toolCallsSinceReflection >= Constants.PLANNING.reflectionInterval
+end
+
 function TaskPlanner.reflectionCompleted()
 	reflectionDue = false
 	toolCallsSinceReflection = 0
-
-	if Constants.DEBUG then
-		print("[TaskPlanner] Reflection completed, counters reset")
-	end
 end
 
---[[
-    Generate a reflection prompt to inject into conversation
-    @return string - Reflection guidance for the LLM
-]]
-function TaskPlanner.generateReflectionPrompt()
-	local parts = { "\n[REFLECTION CHECKPOINT]\n" }
-
-	-- Current plan status
-	if currentPlan then
-		table.insert(parts, string.format(
-			"?? Plan Progress: Phase %d/%d, Step %d\n",
-			currentPlan.currentPhase,
-			#currentPlan.phases,
-			currentPlan.currentStep
-			))
-
-		if #currentPlan.failedSteps > 0 then
-			table.insert(parts, string.format(
-				"?? Failed steps: %d\n",
-				#currentPlan.failedSteps
-				))
-		end
-	end
-
-	-- Recent failures
-	if #recentFailures > 0 then
-		table.insert(parts, string.format(
-			"? Recent failures (%d in last minute). Consider:\n",
-			#recentFailures
-			))
-		table.insert(parts, "- Is the approach working?\n")
-		table.insert(parts, "- Should you re-read code/structure?\n")
-		table.insert(parts, "- Is there a simpler alternative?\n")
-	end
-
-	-- Reflection questions
-	table.insert(parts, "\nBefore continuing, briefly assess:\n")
-	table.insert(parts, "1. Are my recent actions moving toward the goal?\n")
-	table.insert(parts, "2. Have I encountered unexpected obstacles?\n")
-	table.insert(parts, "3. Should I adjust my approach?\n")
-
-	return table.concat(parts)
-end
-
--- ============================================================================
--- SESSION HISTORY
--- ============================================================================
-
---[[
-    Get session history summary
-    @return table
-]]
-function TaskPlanner.getSessionSummary()
-	local summary = {
-		totalActions = #sessionHistory,
-		successes = 0,
-		failures = 0,
-		recentActions = {}
-	}
-
-	for i, action in ipairs(sessionHistory) do
-		if action.success then
-			summary.successes = summary.successes + 1
-		else
-			summary.failures = summary.failures + 1
-		end
-
-		-- Include last 10 actions in summary
-		if i > #sessionHistory - 10 then
-			table.insert(summary.recentActions, action)
-		end
-	end
-
-	return summary
-end
-
---[[
-    Format session history for prompt inclusion
-    @return string
-]]
-function TaskPlanner.formatSessionHistoryForPrompt()
-	if not Constants.ADAPTIVE_PROMPT.includeSessionHistory then
-		return ""
-	end
-
-	local summary = TaskPlanner.getSessionSummary()
-
-	if summary.totalActions == 0 then
-		return ""
-	end
-
-	local parts = { "\n## Session History\n" }
-	table.insert(parts, string.format(
-		"Actions this session: %d (%d successful, %d failed)\n",
-		summary.totalActions, summary.successes, summary.failures
-		))
-
-	if #summary.recentActions > 0 then
-		table.insert(parts, "\nRecent actions:\n")
-		for _, action in ipairs(summary.recentActions) do
-			local icon = action.success and "?" or "?"
-			table.insert(parts, string.format("- %s %s\n", icon, action.action:sub(1, 60)))
-		end
-	end
-
-	return table.concat(parts)
-end
-
---[[
-    Get recent failures count (for adaptive prompt)
-    @return number
-]]
 function TaskPlanner.getRecentFailureCount()
 	return #recentFailures
 end
 
---[[
-    Reset session state (on conversation reset)
-]]
+-- ============================================================================
+-- INTENT & HISTORY
+-- ============================================================================
+
+function TaskPlanner.formatSessionHistoryForPrompt()
+	if not Constants.ADAPTIVE_PROMPT.includeSessionHistory then return "" end
+	local parts = { "\n## Session History\n" }
+	if #sessionHistory == 0 then return "" end
+	
+	for i = math.max(1, #sessionHistory - 5), #sessionHistory do
+		local action = sessionHistory[i]
+		local icon = action.success and "✅" or "❌"
+		table.insert(parts, string.format("- %s %s", icon, action.text:sub(1, 60)))
+	end
+	return table.concat(parts, "\n")
+end
+
 function TaskPlanner.resetSession()
 	currentPlan = nil
-	reflectionDue = false
-	toolCallsSinceReflection = 0
 	recentFailures = {}
 	sessionHistory = {}
-
-	if Constants.DEBUG then
-		print("[TaskPlanner] Session state reset")
-	end
-end
-
---[[
-    Called when a new task (user message) starts
-    Clears transient state but preserves session history
-]]
-function TaskPlanner.onNewTask()
-	-- Clear transient failure tracking (these are task-specific)
-	recentFailures = {}
 	reflectionDue = false
 	toolCallsSinceReflection = 0
-
-	-- Keep sessionHistory - it's useful for overall session context
-	-- Keep currentPlan - it might be relevant if continuing similar work
-
-	if Constants.DEBUG then
-		print("[TaskPlanner] New task boundary - cleared transient state")
-	end
-end
-
--- ============================================================================
--- INTENT PERSISTENCE
--- ============================================================================
-
--- Active intent tracking
-local activeIntent = nil
-
---[[
-    Extract constraints from user message
-    @param message string
-    @return table - Array of constraint strings
-]]
-local function extractConstraints(message)
-	local constraints = {}
-	local lowerMessage = message:lower()
-
-	-- Look for constraint patterns
-	local constraintPatterns = {
-		"without%s+breaking%s+([^,%.]+)",
-		"without%s+changing%s+([^,%.]+)",
-		"keep%s+([^,%.]+)%s+working",
-		"don't%s+touch%s+([^,%.]+)",
-		"don't%s+modify%s+([^,%.]+)",
-		"preserve%s+([^,%.]+)",
-		"maintain%s+([^,%.]+)",
-	}
-
-	for _, pattern in ipairs(constraintPatterns) do
-		local match = lowerMessage:match(pattern)
-		if type(match) == "string" then
-			local trimmed = match:gsub("^%s+", ""):gsub("%s+$", "")
-			table.insert(constraints, trimmed)
-		end
-	end
-
-	return constraints
-end
-
---[[
-    Extract success criteria from user message
-    @param message string
-    @return table - Array of criteria strings
-]]
-local function extractSuccessCriteria(message)
-	local criteria = {}
-	local lowerMessage = message:lower()
-
-	-- Look for success criteria patterns
-	local criteriaPatterns = {
-		"should%s+([^,%.]+)",
-		"must%s+([^,%.]+)",
-		"needs?%s+to%s+([^,%.]+)",
-		"make%s+sure%s+([^,%.]+)",
-		"ensure%s+([^,%.]+)",
-	}
-
-	for _, pattern in ipairs(criteriaPatterns) do
-		-- Use string.match in a loop with position tracking instead of gmatch
-		-- This avoids issues with gmatch returning unexpected values
-		local searchStart = 1
-		while searchStart <= #lowerMessage do
-			local matchStart, matchEnd, capture = lowerMessage:find(pattern, searchStart)
-			if not matchStart then
-				break
-			end
-			-- Process the capture if valid
-			if type(capture) == "string" and #capture > 5 then  -- Skip very short matches
-				local trimmed = capture:gsub("^%s+", ""):gsub("%s+$", "")
-				table.insert(criteria, trimmed)
-			end
-			-- Move past this match to find more
-			searchStart = matchEnd + 1
-		end
-	end
-
-	return criteria
-end
-
---[[
-    Set the active intent for the current task
-    @param userMessage string
-    @param analysis table - From analyzeTask
-]]
-function TaskPlanner.setIntent(userMessage, analysis)
-	activeIntent = {
-		original = userMessage,
-		parsed = {
-			action = analysis and analysis.suggestedApproach or nil,
-			complexity = analysis and analysis.complexity or "unknown",
-			capabilities = analysis and analysis.capabilities or {}
-		},
-		constraints = extractConstraints(userMessage),
-		successCriteria = extractSuccessCriteria(userMessage),
-		createdAt = tick(),
-		attempts = 0,
-		lastError = nil
-	}
-
-	if Constants.DEBUG then
-		print(string.format("[TaskPlanner] Intent set: %s (constraints: %d, criteria: %d)",
-			userMessage:sub(1, 40),
-			#activeIntent.constraints,
-			#activeIntent.successCriteria
-			))
-	end
-end
-
---[[
-    Get the current active intent
-    @return table|nil
-]]
-function TaskPlanner.getIntent()
-	return activeIntent
-end
-
---[[
-    Get a reminder of the original intent (for error recovery)
-    @return string|nil
-]]
-function TaskPlanner.getIntentReminder()
-	if not activeIntent then return nil end
-
-	local parts = {
-		string.format("?? REMINDER - Original goal: %s", activeIntent.original:sub(1, 150))
-	}
-
-	if activeIntent.attempts > 0 then
-		table.insert(parts, string.format("Attempt #%d", activeIntent.attempts + 1))
-	end
-
-	if #activeIntent.constraints > 0 then
-		table.insert(parts, "Constraints: " .. table.concat(activeIntent.constraints, ", "))
-	end
-
-	if #activeIntent.successCriteria > 0 then
-		table.insert(parts, "Success criteria: " .. table.concat(activeIntent.successCriteria, "; "))
-	end
-
-	return table.concat(parts, "\n")
-end
-
---[[
-    Called when an error occurs during task execution
-    @param errorMessage string
-    @return table|nil - Reminder and suggestion if attempts are high
-]]
-function TaskPlanner.onError(errorMessage)
-	if not activeIntent then return nil end
-
-	activeIntent.attempts = activeIntent.attempts + 1
-	activeIntent.lastError = errorMessage
-
-	if activeIntent.attempts >= 3 then
-		return {
-			message = TaskPlanner.getIntentReminder(),
-			suggestion = string.format(
-				"After %d failed attempts, consider asking the user if the goal is still correct.",
-				activeIntent.attempts
-			),
-			shouldAskUser = activeIntent.attempts >= 5
-		}
-	end
-
-	return nil
-end
-
---[[
-    Mark intent as completed
-    @param success boolean
-    @param summary string|nil
-]]
-function TaskPlanner.completeIntent(success, summary)
-	if activeIntent then
-		activeIntent.completed = true
-		activeIntent.success = success
-		activeIntent.completedAt = tick()
-		activeIntent.summary = summary
-
-		if Constants.DEBUG then
-			print(string.format("[TaskPlanner] Intent completed: %s (%d attempts)",
-				success and "SUCCESS" or "FAILED",
-				activeIntent.attempts
-				))
-		end
-	end
-
-	activeIntent = nil
-end
-
---[[
-    Format intent for inclusion in prompt
-    @return string
-]]
-function TaskPlanner.formatIntentForPrompt()
-	if not activeIntent then return "" end
-
-	local parts = { "\n## ?? Current Task Intent\n" }
-
-	table.insert(parts, string.format("**Goal:** %s", activeIntent.original:sub(1, 200)))
-
-	if #activeIntent.constraints > 0 then
-		table.insert(parts, "\n**Constraints:**")
-		for _, constraint in ipairs(activeIntent.constraints) do
-			table.insert(parts, "- " .. constraint)
-		end
-	end
-
-	if #activeIntent.successCriteria > 0 then
-		table.insert(parts, "\n**Success Criteria:**")
-		for _, criterion in ipairs(activeIntent.successCriteria) do
-			table.insert(parts, "- " .. criterion)
-		end
-	end
-
-	if activeIntent.attempts > 0 then
-		table.insert(parts, string.format("\n?? Previous attempts: %d", activeIntent.attempts))
-	end
-
-	return table.concat(parts, "\n")
 end
 
 return TaskPlanner

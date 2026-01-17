@@ -11,7 +11,9 @@
 
 local Constants = require(script.Parent.Parent.Shared.Constants)
 local IndexManager = require(script.Parent.Parent.Shared.IndexManager)
+local ProjectGraph = require(script.Parent.Parent.Shared.ProjectGraph)
 local Utils = require(script.Parent.Parent.Shared.Utils)
+local DecisionMemory = require(script.Parent.Parent.Memory.DecisionMemory)
 
 local ContextSelector = {}
 
@@ -446,6 +448,12 @@ local function scoreRelevance(scriptData, requestKeywords, taskCapabilities)
 	local freshnessAdjustment = calculateFreshnessScore(scriptData.path)
 	score = score + freshnessAdjustment
 
+	-- 8. WISDOM: Problematic scripts (from DecisionMemory)
+	local flagged = DecisionMemory.getFlaggedScripts()
+	if flagged[scriptData.path] then
+		score = score + 50 -- Major boost: prioritize fixing problematic scripts
+	end
+
 	return score
 end
 
@@ -460,18 +468,35 @@ end
     @return table - { scripts: array, totalAvailable: number, selectionReason: string }
 ]]
 function ContextSelector.selectRelevantScripts(userMessage, taskAnalysis)
-	if not Constants.CONTEXT_SELECTION.enabled then
-		-- Fallback: return all scripts (old behavior)
-		local scanResult = IndexManager.scanScripts()
+	-- Safety check for IndexManager result structure
+	local scanResult = IndexManager.scanScriptsAsync()
+	if not scanResult or not scanResult.items then
+		warn("[ContextSelector] IndexManager returned invalid index. Check Constants configuration.")
 		return {
-			scripts = scanResult.scripts,
-			totalAvailable = scanResult.totalCount,
-			selectionReason = "Context selection disabled - including all scripts"
+			scripts = {},
+			totalAvailable = 0,
+			selectionReason = "Index unavailable or malformed"
 		}
 	end
 
-	local scanResult = IndexManager.scanScripts()
-	local allScripts = scanResult.scripts
+	-- Extract script items (IndexManager v3.0 uses 'items' and 'totalCount')
+	-- Note: The implementation also uses 'scripts' property in some places, 
+	-- but 'items' is the primary list for v3.0
+	local allScripts = {}
+	for _, item in ipairs(scanResult.items) do
+		if item.type == "script" then
+			table.insert(allScripts, item)
+		end
+	end
+
+	if not Constants.CONTEXT_SELECTION.enabled then
+		-- Fallback: return all scripts
+		return {
+			scripts = allScripts,
+			totalAvailable = #allScripts,
+			selectionReason = "Context selection disabled - including all scripts"
+		}
+	end
 
 	if #allScripts == 0 then
 		return {
@@ -488,7 +513,7 @@ function ContextSelector.selectRelevantScripts(userMessage, taskAnalysis)
 	end
 
 	-- Get capabilities from task analysis
-	local taskCapabilities = taskAnalysis and taskAnalysis.capabilities or {}
+	local taskCapabilities = (taskAnalysis and taskAnalysis.capabilities) or {}
 
 	-- Score all scripts
 	local scoredScripts = {}
@@ -613,7 +638,15 @@ end
     @return string - Formatted text for prompt
 ]]
 function ContextSelector.formatForPrompt(selection)
+	if not selection then
+		return "GAME SCRIPTS context unavailable (selection nil)"
+	end
+
 	local lines = {}
+
+	-- ARCHITECTURE OVERVIEW (New)
+	local archOverview = ProjectGraph.getArchitectureOverview()
+	table.insert(lines, archOverview .. "\n")
 
 	-- Header with context
 	table.insert(lines, "GAME SCRIPTS (Filtered by Relevance):\n")
@@ -630,12 +663,20 @@ function ContextSelector.formatForPrompt(selection)
 	table.sort(sortedScripts, function(a, b) return a.path < b.path end)
 
 	-- List scripts
+	local flaggedScripts = DecisionMemory.getFlaggedScripts()
+
 	for _, scriptData in ipairs(sortedScripts) do
 		local flags = {}
 
+		-- WISDOM: Problematic flag
+		local flagData = flaggedScripts[scriptData.path]
+		if flagData then
+			table.insert(flags, "⚠️ PROBLEMATIC")
+		end
+
 		-- Recently edited indicator
 		if recentlyEdited[scriptData.path] then
-			table.insert(flags, "??")
+			table.insert(flags, "✨")
 		end
 
 		-- Freshness indicator

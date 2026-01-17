@@ -13,8 +13,20 @@
 
 local Constants = require(script.Parent.Parent.Shared.Constants)
 local Utils = require(script.Parent.Parent.Shared.Utils)
+local ProjectGraph = require(script.Parent.Parent.Shared.ProjectGraph)
+local DecisionMemory = require(script.Parent.Parent.Memory.DecisionMemory)
 
 local ErrorPredictor = {}
+
+-- ============================================================================
+-- EVENT CALLBACKS (for UI integration)
+-- ============================================================================
+
+-- Called when a risk is detected (for toast notifications)
+ErrorPredictor.onRiskDetected = nil  -- function(toolName, riskLevel, message)
+
+-- Called when a failure pattern is detected
+ErrorPredictor.onFailurePattern = nil  -- function(toolName, failureCount)
 
 -- ============================================================================
 -- CONFIGURATION
@@ -117,6 +129,47 @@ end
     @param args table
     @return table - { risks: array, overallRisk: string, shouldWarn: boolean }
 ]]
+function ErrorPredictor._assessArchitecturalRisk(toolName, args, risks)
+	if not args.path then
+		return
+	end
+
+	-- Check if editing/deleting a Core Hub
+	if toolName == "edit_script" or toolName == "patch_script" or toolName == "delete_instance" then
+		local deps = ProjectGraph.getDependenciesFor(args.path)
+
+		-- If many scripts depend on this, it's high risk
+		if deps and deps.dependents and #deps.dependents >= 3 then
+			local level = (toolName == "delete_instance") and "critical" or "high"
+			table.insert(risks, {
+				level = level,
+				reason = string.format("Target is a Core Hub used by %d other scripts", #deps.dependents),
+				mitigation = "Verify impact on dependents before modifying. Run /map to see architecture.",
+				field = "path",
+			})
+		end
+	end
+end
+
+function ErrorPredictor._assessWisdomRisk(toolName, args, risks)
+	if not args.path then
+		return
+	end
+
+	-- Check if this script is flagged as problematic in DecisionMemory
+	local flaggedScripts = DecisionMemory.getFlaggedScripts()
+	local flagData = flaggedScripts[args.path]
+
+	if flagData then
+		table.insert(risks, {
+			level = "high",
+			reason = "Previous operations on this script failed: " .. tostring(flagData.reason),
+			mitigation = "Try a different approach (e.g., edit_script instead of patch_script).",
+			field = "path",
+		})
+	end
+end
+
 function ErrorPredictor.assessRisk(toolName, args)
 	if not CONFIG.enabled then
 		return { risks = {}, overallRisk = "low", shouldWarn = false }
@@ -144,6 +197,10 @@ function ErrorPredictor.assessRisk(toolName, args)
 		ErrorPredictor._assessDeleteRisk(args, risks)
 	end
 
+	-- Context-Aware Checks
+	ErrorPredictor._assessArchitecturalRisk(toolName, args, risks)
+	ErrorPredictor._assessWisdomRisk(toolName, args, risks)
+
 	-- Check for repeated failure patterns
 	ErrorPredictor._checkFailurePatterns(toolName, args, risks)
 
@@ -163,6 +220,12 @@ function ErrorPredictor.assessRisk(toolName, args)
 		overallRisk = "high"
 	elseif #risks > 0 then
 		overallRisk = "medium"
+	end
+
+	-- Fire callback for high/critical risks (for toast notifications)
+	if (hasCritical or hasHigh) and ErrorPredictor.onRiskDetected then
+		local topRisk = risks[1]
+		ErrorPredictor.onRiskDetected(toolName, overallRisk, topRisk and topRisk.reason or "Risk detected")
 	end
 
 	return {
@@ -385,6 +448,11 @@ function ErrorPredictor._checkFailurePatterns(toolName, args, risks)
 			mitigation = "Try a different approach. Last error: " .. (lastSimilarError or "unknown"):sub(1, 80),
 			field = "general"
 		})
+
+		-- Fire callback for failure pattern (for toast notification)
+		if ErrorPredictor.onFailurePattern then
+			ErrorPredictor.onFailurePattern(toolName, similarFailures)
+		end
 	end
 end
 

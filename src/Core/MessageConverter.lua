@@ -21,13 +21,22 @@ local MessageConverter = {}
 
 --[[
 	Sanitize tool response to ensure it's safe for JSON encoding and API submission
-	@param response table - The tool response
-	@return table - Sanitized response
+	@param response any - The tool response
+	@param visited table? - Table to track visited references (for cycle detection)
+	@return any - Sanitized response
 ]]
-local function sanitizeToolResponse(response)
+local function sanitizeToolResponse(response: any, visited: {[any]: boolean}?): any
+	visited = visited or {}
+
 	if type(response) ~= "table" then
 		return response
 	end
+
+	-- Cycle detection
+	if visited[response] then
+		return "<Circular Reference>"
+	end
+	visited[response] = true
 
 	local sanitized = {}
 
@@ -46,7 +55,7 @@ local function sanitizeToolResponse(response)
 			sanitized[key] = value
 
 		elseif valueType == "table" then
-			sanitized[key] = sanitizeToolResponse(value)
+			sanitized[key] = sanitizeToolResponse(value, visited)
 
 		elseif valueType == "nil" then
 			sanitized[key] = nil
@@ -116,7 +125,9 @@ function MessageConverter.toOpenAI(contents)
 		-- Add text/tool_calls message
 		if textContent ~= "" or toolCalls then
 			local message = { role = role }
-			if textContent ~= "" then message.content = textContent end
+			-- CRITICAL: OpenAI API requires 'content' field in ALL messages
+			-- If textContent is empty but we have tool_calls, use empty string
+			message.content = textContent ~= "" and textContent or ""
 			if toolCalls then message.tool_calls = toolCalls end
 			table.insert(messages, message)
 		end

@@ -8,8 +8,12 @@
 local Constants = require(script.Parent.Parent.Shared.Constants)
 local Create = require(script.Parent.Create)
 local MarkdownParser = require(script.Parent.Parent.Shared.MarkdownParser)
+local Utils = require(script.Parent.Parent.Shared.Utils)
 
 local ChatRenderer = {}
+
+-- Janitor for managing all message-level connections
+local messageJanitor = Utils.Janitor.new()
 
 -- Track if we've hidden the status panel
 local statusPanelHidden = false
@@ -143,24 +147,32 @@ local function addHoverEffect(button, normalColor)
 end
 
 --[[
-    Add a chat message to the UI
+    Add a chat message to the UI (v2.1 - Compact design with hidden code blocks)
     @param state table - State table with ui and chatMessages
     @param role string - "user" or "assistant" or "system"
     @param text string - Message text
     @return number - Message index
 ]]
 function ChatRenderer.addMessage(state, role, text)
+	-- CRITICAL: Defensive check - chatHistory MUST be initialized
+	if not state or not state.ui or not state.ui.chatHistory then
+		warn("[Lux] CRITICAL ERROR: chatHistory not initialized! Message will not appear.")
+		warn("[Lux] state=" .. tostring(state))
+		warn("[Lux] state.ui=" .. tostring(state and state.ui))
+		warn("[Lux] state.ui.chatHistory=" .. tostring(state and state.ui and state.ui.chatHistory))
+		return
+	end
+
 	if Constants.DEBUG then
 		print(string.format("[Lux DEBUG] Adding chat message: %s (%d chars)", role, #text))
 	end
 
 	-- Finalize any active system group when a text message is added
-	-- This ensures tool operations are separated by conversation messages
 	if (role == "assistant" or role == "user") and currentSystemGroup then
 		ChatRenderer.finalizeCollapsibleSystemGroup()
 	end
 
-	-- Hide status panel when first message is added to maximize chat space
+	-- Hide status panel when first message is added
 	if #state.chatMessages == 0 then
 		ChatRenderer.hideStatusPanel(state)
 	end
@@ -172,22 +184,20 @@ function ChatRenderer.addMessage(state, role, text)
 		timestamp = timestamp
 	})
 
-	-- Determine colors based on role
-	local bgColor = Constants.COLORS.messageAssistant
-	local roleLabel = "Lux AI"
-	local roleColor = Constants.COLORS.textSecondary
+	-- TERMINAL THEME: Flat design with Terminal Black background
+	local bgColor = Color3.fromRGB(24, 24, 24)  -- #181818 Terminal Black
+	local rolePrefix = "❯ [LUX]"
+	local roleColor = Constants.COLORS.textPrimary  -- White for LUX
 
 	if role == "user" then
-		bgColor = Constants.COLORS.messageUser
-		roleLabel = "You"
-		roleColor = Color3.fromRGB(150, 170, 255)
+		rolePrefix = "❯ [USER]"
+		roleColor = Constants.COLORS.accentPrimary  -- Blue for USER
 	elseif role == "system" then
-		bgColor = Constants.COLORS.messageSystem
-		roleLabel = "System"
-		roleColor = Constants.COLORS.accentWarning
+		rolePrefix = "❯ [SYS]"
+		roleColor = Constants.COLORS.accentWarning  -- Amber for SYSTEM
 	end
 
-	-- Create message bubble
+	-- Create message frame (flat, no bubble)
 	local messageFrame = Create.new("Frame", {
 		Name = "Message_" .. #state.chatMessages,
 		Size = UDim2.new(1, 0, 0, 0),
@@ -198,72 +208,69 @@ function ChatRenderer.addMessage(state, role, text)
 		Parent = state.ui.chatHistory
 	})
 
+	-- Minimal corner radius (flat terminal style)
 	Create.new("UICorner", {
-		CornerRadius = UDim.new(0, 8),
+		CornerRadius = UDim.new(0, 2),
 		Parent = messageFrame
 	})
 
 	Create.new("UIPadding", {
-		PaddingTop = UDim.new(0, 10),
-		PaddingBottom = UDim.new(0, 10),
-		PaddingLeft = UDim.new(0, 10),
-		PaddingRight = UDim.new(0, 10),
+		PaddingTop = UDim.new(0, 4),
+		PaddingBottom = UDim.new(0, 4),
+		PaddingLeft = UDim.new(0, 8),
+		PaddingRight = UDim.new(0, 8),
 		Parent = messageFrame
 	})
 
 	Create.new("UIListLayout", {
-		Padding = UDim.new(0, 4),
+		Padding = UDim.new(0, 4),  -- Increased density
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = messageFrame
 	})
 
-	-- Header row (Role + Timestamp)
+	-- Header row with prefix (compact terminal style)
 	local headerRow = Create.new("Frame", {
 		Name = "HeaderRow",
-		Size = UDim2.new(1, 0, 0, 16),
+		Size = UDim2.new(1, 0, 0, 14),
 		BackgroundTransparency = 1,
 		LayoutOrder = 1,
 		Parent = messageFrame
 	})
 
-	-- Role label
 	Create.new("TextLabel", {
-		Name = "Role",
-		Size = UDim2.new(0.5, 0, 1, 0),
-		Position = UDim2.new(0, 0, 0, 0),
+		Name = "Prefix",
+		Size = UDim2.new(0.7, 0, 1, 0),
 		BackgroundTransparency = 1,
-		Text = roleLabel,
+		Text = rolePrefix,  -- Terminal prefix
 		TextColor3 = roleColor,
-		Font = Enum.Font.GothamBold,
-		TextSize = 11,
+		Font = Enum.Font.Code,  -- Monospace for terminal aesthetic
+		TextSize = Constants.UI.FONT_SIZE_SMALL,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Parent = headerRow
 	})
 
-	-- Timestamp label
-	local timestampLabel = Create.new("TextLabel", {
+	Create.new("TextLabel", {
 		Name = "Timestamp",
-		Size = UDim2.new(0.5, 0, 1, 0),
-		Position = UDim2.new(0.5, 0, 0, 0),
+		Size = UDim2.new(0.3, 0, 1, 0),
+		Position = UDim2.new(0.7, 0, 0, 0),
 		BackgroundTransparency = 1,
 		Text = formatTimestamp(timestamp),
 		TextColor3 = Constants.COLORS.textMuted,
-		Font = Enum.Font.Gotham,
-		TextSize = 10,
+		Font = Enum.Font.Code,
+		TextSize = Constants.UI.FONT_SIZE_TINY,
 		TextXAlignment = Enum.TextXAlignment.Right,
 		Parent = headerRow
 	})
 
-	-- Store timestamp for updating later
 	messageFrame:SetAttribute("MessageTimestamp", timestamp)
 
-	-- Message text - Using TextLabel for consistent RichText rendering
-	-- Note: AutomaticSize can be buggy with RichText, so we manually calculate height
-	local parsedText = MarkdownParser.parse(text)
+	-- Parse text with code blocks hidden
+	local parsedText, codeBlocks = MarkdownParser.parse(text, { hideCodeBlocks = true })
 
+	-- Message text
 	local textLabel = Create.new("TextLabel", {
 		Name = "Text",
-		Size = UDim2.new(1, -4, 0, 0),  -- Start with auto height
+		Size = UDim2.new(1, 0, 0, 0),
 		BackgroundTransparency = 1,
 		Text = parsedText,
 		TextColor3 = Constants.COLORS.textPrimary,
@@ -272,45 +279,148 @@ function ChatRenderer.addMessage(state, role, text)
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Top,
 		TextWrapped = true,
-		TextTruncate = Enum.TextTruncate.None,
 		RichText = true,
 		AutomaticSize = Enum.AutomaticSize.Y,
 		LayoutOrder = 2,
 		Parent = messageFrame
 	})
 
-	-- Workaround for AutomaticSize issues with RichText/TextWrapped
-	-- Manually calculate and set height based on TextBounds
-	task.defer(function()
-		if textLabel and textLabel.Parent then
-			task.wait(0.02) -- Wait for layout
-
-			-- Get the actual text bounds
-			local absoluteWidth = textLabel.AbsoluteSize.X
-			if absoluteWidth > 0 then
-				-- Use TextService to calculate proper height
-				local TextService = game:GetService("TextService")
-				local success, textSize = pcall(function()
-					return TextService:GetTextSize(
-						text, -- Use original text, not parsed (more accurate estimate)
-						Constants.UI.FONT_SIZE_NORMAL,
-						Constants.UI.FONT_NORMAL,
-						Vector2.new(absoluteWidth, math.huge)
-					)
-				end)
-
-				if success and textSize then
-					-- Add padding and set minimum height
-					local calculatedHeight = math.max(20, textSize.Y + 4)
-					textLabel.Size = UDim2.new(1, -4, 0, calculatedHeight)
-				end
-			end
+	-- Add expandable code button if code blocks present
+	if codeBlocks and #codeBlocks > 0 then
+		local totalLines = 0
+		for _, block in ipairs(codeBlocks) do
+			totalLines = totalLines + block.lines
 		end
-	end)
 
-	-- Auto-scroll to bottom
+		local viewCodeBtn = Create.new("TextButton", {
+			Name = "ViewCodeBtn",
+			Size = UDim2.new(0, 100, 0, 18),
+			BackgroundColor3 = Constants.COLORS.backgroundLight,
+			Text = "📄 Code (" .. totalLines .. " ln)",
+			TextColor3 = Constants.COLORS.textSecondary,
+			Font = Constants.UI.FONT_NORMAL,
+			TextSize = Constants.UI.FONT_SIZE_TINY,
+			LayoutOrder = 3,
+			Parent = messageFrame
+		})
+
+		Create.new("UICorner", {
+			CornerRadius = UDim.new(0, 3),
+			Parent = viewCodeBtn
+		})
+
+		local codeExpanded = false
+		local codeContainer = nil
+
+		viewCodeBtn.MouseButton1Click:Connect(function()
+			codeExpanded = not codeExpanded
+
+			if codeExpanded then
+				viewCodeBtn.Text = "📄 Hide"
+
+				if not codeContainer then
+					codeContainer = Create.new("Frame", {
+						Name = "CodeContainer",
+						Size = UDim2.new(1, 0, 0, 0),
+						BackgroundColor3 = Constants.COLORS.codeBackground,
+						AutomaticSize = Enum.AutomaticSize.Y,
+						LayoutOrder = 4,
+						Parent = messageFrame
+					})
+
+					Create.new("UICorner", {
+						CornerRadius = UDim.new(0, 3),
+						Parent = codeContainer
+					})
+
+					Create.new("UIPadding", {
+						PaddingTop = UDim.new(0, 4),
+						PaddingBottom = UDim.new(0, 4),
+						PaddingLeft = UDim.new(0, 6),
+						PaddingRight = UDim.new(0, 6),
+						Parent = codeContainer
+					})
+
+					Create.new("UIListLayout", {
+						Padding = UDim.new(0, 4),
+						SortOrder = Enum.SortOrder.LayoutOrder,
+						Parent = codeContainer
+					})
+
+					-- Render each code block with truncation
+					for i, block in ipairs(codeBlocks) do
+						local codeLines = {}
+						for line in (block.code .. "\n"):gmatch("([^\n]*)\n") do
+							table.insert(codeLines, line)
+						end
+
+						local isTruncated = #codeLines > 10
+						local displayCode = isTruncated
+							and table.concat({table.unpack(codeLines, 1, 10)}, "\n")
+							or block.code
+
+						local codeLabel = Create.new("TextLabel", {
+							Name = "Code_" .. i,
+							Size = UDim2.new(1, 0, 0, 0),
+							BackgroundTransparency = 1,
+							Text = displayCode,
+							TextColor3 = Color3.fromRGB(140, 140, 150),
+							Font = Constants.UI.FONT_CODE,
+							TextSize = Constants.UI.FONT_SIZE_CODE,
+							TextXAlignment = Enum.TextXAlignment.Left,
+							TextYAlignment = Enum.TextYAlignment.Top,
+							TextWrapped = true,
+							AutomaticSize = Enum.AutomaticSize.Y,
+							LayoutOrder = i * 2,
+							Parent = codeContainer
+						})
+
+						-- Add EXPAND button if truncated
+						if isTruncated then
+							local expandBtn = Create.new("TextButton", {
+								Name = "ExpandBtn_" .. i,
+								Size = UDim2.new(0, 80, 0, 20),
+								BackgroundColor3 = Color3.fromRGB(0, 122, 204),
+								Text = "[ EXPAND ]",
+								TextColor3 = Color3.fromRGB(255, 255, 255),
+								Font = Constants.UI.FONT_CODE,
+								TextSize = Constants.UI.FONT_SIZE_SMALL,
+								LayoutOrder = i * 2 + 1,
+								Parent = codeContainer
+							})
+
+							Create.new("UICorner", {
+								CornerRadius = UDim.new(0, 2),
+								Parent = expandBtn
+							})
+
+							-- Use Janitor to manage the connection
+							local expandConnection = expandBtn.MouseButton1Click:Connect(function()
+								codeLabel.Text = block.code
+								expandBtn.Visible = false
+							end)
+							messageJanitor:Add(expandConnection, "Disconnect", "expand_" .. tick())
+						end
+					end
+				else
+					codeContainer.Visible = true
+				end
+			else
+				viewCodeBtn.Text = "📄 Code (" .. totalLines .. " ln)"
+				if codeContainer then codeContainer.Visible = false end
+			end
+		end)
+
+		addHoverEffect(viewCodeBtn, Constants.COLORS.backgroundLight)
+	end
+
+	-- Auto-scroll (with defensive check)
 	task.spawn(function()
-		task.wait(0.05) -- Wait for layout to recalculate
+		task.wait(0.05)
+		if not state.ui.chatHistory then
+			warn("[Lux] Auto-scroll failed: chatHistory is nil")
+			return
+		end
 		local canvasSize = state.ui.chatHistory.AbsoluteCanvasSize.Y
 		local frameSize = state.ui.chatHistory.AbsoluteSize.Y
 		state.ui.chatHistory.CanvasPosition = Vector2.new(0, math.max(0, canvasSize - frameSize))
@@ -396,7 +506,7 @@ function ChatRenderer.showThinking(state)
 	thinkingContainer = Create.new("Frame", {
 		Name = "ThinkingContainer",
 		Size = UDim2.new(1, 0, 0, 0),
-		BackgroundColor3 = Constants.COLORS.messageAssistant,
+		BackgroundColor3 = Color3.fromRGB(24, 24, 24),  -- Terminal Black
 		BorderSizePixel = 0,
 		AutomaticSize = Enum.AutomaticSize.Y,
 		LayoutOrder = thinkingMessageIndex,
@@ -404,7 +514,7 @@ function ChatRenderer.showThinking(state)
 	})
 
 	Create.new("UICorner", {
-		CornerRadius = UDim.new(0, 8),
+		CornerRadius = UDim.new(0, 2),  -- Flat terminal style
 		Parent = thinkingContainer
 	})
 
@@ -569,6 +679,14 @@ function ChatRenderer.addThought(text, thoughtType)
 
 	thoughtType = thoughtType or "thinking"
 
+	-- ROLLING BUFFER: Limit to 50 thought blocks to prevent lag
+	if #thoughtBlocks >= 50 then
+		local oldestBlock = table.remove(thoughtBlocks, 1)
+		if oldestBlock and oldestBlock.Parent then
+			oldestBlock:Destroy()
+		end
+	end
+
 	-- Choose color based on type
 	local bgColor = Constants.COLORS.backgroundLight
 	local textColor = Constants.COLORS.textPrimary
@@ -658,8 +776,63 @@ function ChatRenderer.updateThinkingStatus(iteration, toolName)
 end
 
 --[[
-    Add a compact tool activity message to chat (inline, not in thinking panel)
-    This shows tool execution in the main chat flow for better visibility
+    Refresh the plan display in the thinking panel
+    @param formattedPlan string - Formatted plan text from TaskPlanner.formatPlan()
+]]
+function ChatRenderer.refreshPlan(formattedPlan)
+	if not thinkingContainer then return end
+	
+	-- We want to show the living plan as a persistent thought block at the top of the thinking container
+	local planBlock = thinkingContainer:FindFirstChild("LivingPlan")
+	if not planBlock then
+		planBlock = Create.new("Frame", {
+			Name = "LivingPlan",
+			Size = UDim2.new(1, 0, 0, 0),
+			BackgroundColor3 = Color3.fromRGB(45, 45, 60),
+			BorderSizePixel = 0,
+			AutomaticSize = Enum.AutomaticSize.Y,
+			LayoutOrder = 1.5, -- Below header (1) and above thoughts (2+)
+			Parent = thinkingContainer
+		})
+		
+		Create.new("UICorner", {
+			CornerRadius = UDim.new(0, 6),
+			Parent = planBlock
+		})
+		
+		Create.new("UIPadding", {
+			PaddingTop = UDim.new(0, 6),
+			PaddingBottom = UDim.new(0, 6),
+			PaddingLeft = UDim.new(0, 8),
+			PaddingRight = UDim.new(0, 8),
+			Parent = planBlock
+		})
+	end
+	
+	local planText = planBlock:FindFirstChild("PlanText")
+	if not planText then
+		planText = Create.new("TextLabel", {
+			Name = "PlanText",
+			Size = UDim2.new(1, 0, 0, 0),
+			BackgroundTransparency = 1,
+			TextColor3 = Color3.fromRGB(220, 220, 255),
+			Font = Constants.UI.FONT_NORMAL,
+			TextSize = 11,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Top,
+			TextWrapped = true,
+			RichText = true,
+			AutomaticSize = Enum.AutomaticSize.Y,
+			Parent = planBlock
+		})
+	end
+	
+	planText.Text = MarkdownParser.parse(formattedPlan)
+end
+
+--[[
+    Add a compact tool activity card to chat
+    v2.1 - Single-line activity cards with minimal styling
     @param state table - State table with ui and chatMessages
     @param toolIntent string - What the tool is about to do
     @param toolResult string - Result of the tool execution (nil if pending)
@@ -679,84 +852,62 @@ function ChatRenderer.addToolActivity(state, toolIntent, toolResult, status)
 		timestamp = tick()
 	})
 
-	-- Create compact tool message
-	local timestamp = tick()
 	local layoutOrder = #state.chatMessages + 1
 
-	-- Choose styling based on status
-	local bgColor = Color3.fromRGB(40, 45, 55) -- Dark blue-gray for tools
-	local borderColor = Constants.COLORS.accentPrimary
-	local statusIcon = Constants.ICONS.PENDING
+	-- Choose icon and color based on status (minimal styling)
+	local statusIcon = "⏳"
+	local textColor = Constants.COLORS.textMuted
 
 	if status == "success" then
-		bgColor = Color3.fromRGB(35, 50, 40) -- Dark green tint
-		borderColor = Constants.COLORS.accentSuccess
-		statusIcon = Constants.ICONS.SUCCESS
+		statusIcon = "✓"
+		textColor = Constants.COLORS.accentSuccess
 	elseif status == "error" then
-		bgColor = Color3.fromRGB(55, 35, 35) -- Dark red tint
-		borderColor = Constants.COLORS.accentError
-		statusIcon = Constants.ICONS.ERROR
+		statusIcon = "✗"
+		textColor = Constants.COLORS.accentError
 	end
 
-	-- Combine intent and result if both present
-	local displayText = toolIntent
-	if toolResult and toolResult ~= "" then
-		displayText = displayText .. "\n" .. statusIcon .. " " .. toolResult
-	elseif status == "pending" then
-		displayText = Constants.ICONS.PENDING .. " " .. displayText
+	-- Build single-line display text
+	local displayText = statusIcon .. " " .. toolIntent
+	if toolResult and toolResult ~= "" and status ~= "pending" then
+		-- Truncate long results
+		local shortResult = toolResult:sub(1, 40)
+		if #toolResult > 40 then shortResult = shortResult .. "..." end
+		displayText = displayText .. " → " .. shortResult
 	end
 
-	-- Create the tool activity frame (more compact than regular messages)
+	-- Create ultra-compact activity card (single line, minimal height)
 	local activityFrame = Create.new("Frame", {
 		Name = "ToolActivity_" .. layoutOrder,
-		Size = UDim2.new(1, 0, 0, 0),
-		BackgroundColor3 = bgColor,
+		Size = UDim2.new(1, 0, 0, 20),
+		BackgroundColor3 = Constants.COLORS.toolActivityBg,
 		BorderSizePixel = 0,
-		AutomaticSize = Enum.AutomaticSize.Y,
 		LayoutOrder = layoutOrder,
 		Parent = state.ui.chatHistory
 	})
 
 	Create.new("UICorner", {
-		CornerRadius = UDim.new(0, 6),
+		CornerRadius = UDim.new(0, 3),
 		Parent = activityFrame
 	})
 
-	Create.new("UIStroke", {
-		Color = borderColor,
-		Thickness = 1,
-		Transparency = 0.5,
-		Parent = activityFrame
-	})
-
-	Create.new("UIPadding", {
-		PaddingTop = UDim.new(0, 6),
-		PaddingBottom = UDim.new(0, 6),
-		PaddingLeft = UDim.new(0, 10),
-		PaddingRight = UDim.new(0, 10),
-		Parent = activityFrame
-	})
-
-	-- Activity text (smaller, more compact)
+	-- Activity text (single line, tiny font)
 	Create.new("TextLabel", {
 		Name = "ActivityText",
-		Size = UDim2.new(1, 0, 0, 0),
+		Size = UDim2.new(1, -8, 1, 0),
+		Position = UDim2.new(0, 4, 0, 0),
 		BackgroundTransparency = 1,
-		Text = MarkdownParser.parse(displayText),
-		TextColor3 = Color3.fromRGB(180, 190, 210),
+		Text = displayText,
+		TextColor3 = textColor,
 		Font = Constants.UI.FONT_NORMAL,
-		TextSize = 12, -- Slightly smaller than regular messages
+		TextSize = Constants.UI.FONT_SIZE_TINY,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		TextYAlignment = Enum.TextYAlignment.Top,
-		TextWrapped = true,
-		RichText = true,
-		AutomaticSize = Enum.AutomaticSize.Y,
+		TextTruncate = Enum.TextTruncate.AtEnd,
 		Parent = activityFrame
 	})
 
 	-- Auto-scroll
 	task.spawn(function()
-		task.wait(0.05)
+		task.wait(0.03)
 		if state.ui.chatHistory then
 			local canvasSize = state.ui.chatHistory.AbsoluteCanvasSize.Y
 			local frameSize = state.ui.chatHistory.AbsoluteSize.Y
@@ -812,10 +963,11 @@ function ChatRenderer.addCompletionSummary(state, summary)
 		isSummary = true
 	})
 
+	-- TERMINAL MODE: Flat frame with terminal black background (no green tint)
 	local summaryFrame = Create.new("Frame", {
 		Name = "Summary_" .. layoutOrder,
 		Size = UDim2.new(1, 0, 0, 0),
-		BackgroundColor3 = Color3.fromRGB(35, 55, 45), -- Success green tint
+		BackgroundColor3 = Color3.fromRGB(24, 24, 24), -- Terminal Black
 		BorderSizePixel = 0,
 		AutomaticSize = Enum.AutomaticSize.Y,
 		LayoutOrder = layoutOrder,
@@ -823,40 +975,61 @@ function ChatRenderer.addCompletionSummary(state, summary)
 	})
 
 	Create.new("UICorner", {
-		CornerRadius = UDim.new(0, 8),
+		CornerRadius = UDim.new(0, 2),
 		Parent = summaryFrame
 	})
 
-	Create.new("UIStroke", {
-		Color = Constants.COLORS.accentSuccess,
-		Thickness = 1,
-		Transparency = 0.3,
-		Parent = summaryFrame
-	})
-
+	-- Minimal padding for terminal density
 	Create.new("UIPadding", {
-		PaddingTop = UDim.new(0, 10),
-		PaddingBottom = UDim.new(0, 10),
-		PaddingLeft = UDim.new(0, 12),
-		PaddingRight = UDim.new(0, 12),
+		PaddingTop = UDim.new(0, 4),
+		PaddingBottom = UDim.new(0, 4),
+		PaddingLeft = UDim.new(0, 8),
+		PaddingRight = UDim.new(0, 8),
 		Parent = summaryFrame
 	})
 
+	Create.new("UIListLayout", {
+		Padding = UDim.new(0, 4),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = summaryFrame
+	})
+
+	-- Terminal prefix header
+	local prefixLabel = Create.new("TextLabel", {
+		Name = "Prefix",
+		Size = UDim2.new(1, 0, 0, 14),
+		BackgroundTransparency = 1,
+		Text = "❯ [SYS]",
+		TextColor3 = Constants.COLORS.accentSuccess, -- Green prefix for success
+		Font = Enum.Font.Code,
+		TextSize = Constants.UI.FONT_SIZE_SMALL,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		LayoutOrder = 1,
+		Parent = summaryFrame
+	})
+
+	-- Summary text (no green tint, terminal colors)
 	Create.new("TextLabel", {
 		Name = "SummaryText",
 		Size = UDim2.new(1, 0, 0, 0),
 		BackgroundTransparency = 1,
 		Text = MarkdownParser.parse(summaryText),
-		TextColor3 = Color3.fromRGB(180, 230, 200),
+		TextColor3 = Constants.COLORS.textPrimary, -- White terminal text
 		Font = Constants.UI.FONT_NORMAL,
-		TextSize = 13,
+		TextSize = Constants.UI.FONT_SIZE_NORMAL,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Top,
 		TextWrapped = true,
 		RichText = true,
 		AutomaticSize = Enum.AutomaticSize.Y,
+		LayoutOrder = 2,
 		Parent = summaryFrame
 	})
+
+	-- CRITICAL: Finalize any open collapsible groups (prevents orphaned containers)
+	if currentSystemGroup then
+		ChatRenderer.finalizeCollapsibleSystemGroup()
+	end
 
 	-- Auto-scroll
 	task.spawn(function()
@@ -1190,11 +1363,11 @@ function ChatRenderer.addVerificationPrompt(state, request, onResponse)
 	Create.new("TextLabel", {
 		Name = "Header",
 		Text = headerIcon .. " " .. headerText,
-		Size = UDim2.new(1, 0, 0, 16),
+		Size = UDim2.new(1, 0, 0, 14),
 		BackgroundTransparency = 1,
 		TextColor3 = Constants.COLORS.accentPrimary,
 		Font = Enum.Font.GothamBold,
-		TextSize = 12,
+		TextSize = Constants.UI.FONT_SIZE_SMALL,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		LayoutOrder = 1,
 		Parent = verifyFrame
@@ -1209,7 +1382,7 @@ function ChatRenderer.addVerificationPrompt(state, request, onResponse)
 			BackgroundTransparency = 1,
 			TextColor3 = Constants.COLORS.textMuted,
 			Font = Constants.UI.FONT_NORMAL,
-			TextSize = 11,
+			TextSize = Constants.UI.FONT_SIZE_TINY,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextWrapped = true,
 			AutomaticSize = Enum.AutomaticSize.Y,
@@ -1382,13 +1555,13 @@ function ChatRenderer.showVerificationInput(verifyFrame, onResponse, isNegative)
 
 	local textBox = Create.new("TextBox", {
 		Name = "FeedbackInput",
-		Size = UDim2.new(1, 0, 0, 30),
+		Size = UDim2.new(1, 0, 0, 26),
 		BackgroundColor3 = Color3.fromRGB(30, 35, 42),
 		TextColor3 = Constants.COLORS.textPrimary,
 		PlaceholderText = isNegative == false and "What's the problem?" or "Describe what you see...",
 		PlaceholderColor3 = Constants.COLORS.textMuted,
 		Font = Constants.UI.FONT_NORMAL,
-		TextSize = 12,
+		TextSize = Constants.UI.FONT_SIZE_SMALL,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		ClearTextOnFocus = false,
 		Text = "",
@@ -1578,13 +1751,13 @@ function ChatRenderer.createCollapsibleContainer(state, config)
 	-- Title label (positioned after icon)
 	local titleLabel = Create.new("TextLabel", {
 		Name = "Title",
-		Size = UDim2.new(1, -80, 1, 0),
-		Position = UDim2.new(0, 32, 0, 0),
+		Size = UDim2.new(1, -70, 1, 0),
+		Position = UDim2.new(0, 28, 0, 0),
 		BackgroundTransparency = 1,
 		Text = icon .. " " .. title,
 		TextColor3 = headerColor,
 		Font = Enum.Font.GothamBold,
-		TextSize = 12,
+		TextSize = Constants.UI.FONT_SIZE_SMALL,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Center,
 		Parent = headerRow
@@ -1593,13 +1766,13 @@ function ChatRenderer.createCollapsibleContainer(state, config)
 	-- Expand/collapse hint text
 	local hintLabel = Create.new("TextLabel", {
 		Name = "Hint",
-		Size = UDim2.new(0, 60, 1, 0),
-		Position = UDim2.new(1, -64, 0, 0),
+		Size = UDim2.new(0, 50, 1, 0),
+		Position = UDim2.new(1, -54, 0, 0),
 		BackgroundTransparency = 1,
-		Text = collapsed and "expand" or "collapse",
+		Text = collapsed and "+" or "-",
 		TextColor3 = Constants.COLORS.textMuted,
 		Font = Constants.UI.FONT_NORMAL,
-		TextSize = 10,
+		TextSize = Constants.UI.FONT_SIZE_TINY,
 		TextXAlignment = Enum.TextXAlignment.Right,
 		TextYAlignment = Enum.TextYAlignment.Center,
 		Parent = headerRow
@@ -1673,7 +1846,7 @@ function ChatRenderer.createCollapsibleContainer(state, config)
 		isCollapsed = not isCollapsed
 
 		-- Update hint text
-		hintLabel.Text = isCollapsed and "expand" or "collapse"
+		hintLabel.Text = isCollapsed and "+" or "-"
 
 		-- Animate toggle icon rotation via text change
 		if isCollapsed then

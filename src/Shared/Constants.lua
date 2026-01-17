@@ -110,10 +110,11 @@ Constants.PLANNING = {
 	reflectionInterval = 5,                 -- Self-reflect every N tool calls
 	reflectionOnFailure = true,             -- Force reflection after any failure
 	complexityThresholds = {
-		simple = 2,    -- 1-2 estimated steps = simple
-		medium = 5,    -- 3-5 estimated steps = medium  
-		complex = 999  -- 6+ estimated steps = complex
-	}
+		simple = 1,    -- Fast keyword baseline
+		medium = 3,    -- Fast keyword baseline
+		complex = 999  -- Managed by AI override in v2.0
+	},
+	aiEscalationThreshold = 3 -- If AI generates > 3 steps, upgrade to complex
 }
 
 -- Context Selection
@@ -212,6 +213,33 @@ Constants.USER_FEEDBACK = {
 }
 
 -- ============================================================================
+-- INDEXING & WORLD MAP (v3.0)
+-- ============================================================================
+
+Constants.INDEXING = {
+	-- Classes to scan beyond just scripts
+	SCAN_CLASSES = {
+		"Script", "LocalScript", "ModuleScript",
+		"Folder", "Model", "Configuration",
+		"RemoteEvent", "RemoteFunction", "BindableEvent", "BindableFunction",
+		"ScreenGui", "SurfaceGui", "BillboardGui", "Frame", "ScrollingFrame" 
+	},
+	
+	-- Locations to scan
+	SCAN_LOCATIONS = {
+		"ServerScriptService",
+		"ReplicatedStorage",
+		"ReplicatedFirst",
+		"StarterGui",
+		"StarterPlayer",
+		"ServerStorage",
+		"Workspace", 
+	},
+	
+	MAX_ITEMS = 2000, 
+}
+
+-- ============================================================================
 -- SAFETY & RESILIENCE SETTINGS (v3.0)
 -- ============================================================================
 
@@ -262,8 +290,8 @@ Constants.SESSION_MANAGER = {
 	trackTaskDuration = true,              -- Track how long tasks take
 }
 
--- Scan Locations
-Constants.SCAN_LOCATIONS = {
+-- Scan Locations (Legacy compat)
+Constants.SCAN_LOCATIONS = Constants.INDEXING and Constants.INDEXING.SCAN_LOCATIONS or {
 	"ServerScriptService",
 	"ReplicatedStorage",
 	"ReplicatedFirst",
@@ -272,47 +300,47 @@ Constants.SCAN_LOCATIONS = {
 	"ServerStorage",
 }
 
--- Color Scheme (Modern Dark Theme)
--- A cohesive, professional palette with subtle blue undertones
+-- Color Scheme (VS Code Dark Theme)
+-- Professional, minimal palette optimized for readability
 Constants.COLORS = {
-	-- Backgrounds
-	background = Color3.fromRGB(22, 22, 26),           -- Deep charcoal
-	backgroundLight = Color3.fromRGB(32, 34, 40),      -- Elevated surface
-	backgroundDark = Color3.fromRGB(18, 18, 22),       -- Recessed surface
-	backgroundHover = Color3.fromRGB(42, 44, 52),      -- Hover state
+	-- Backgrounds (VS Code Dark)
+	background = Color3.fromRGB(30, 30, 30),           -- #1E1E1E
+	backgroundLight = Color3.fromRGB(37, 37, 38),      -- #252526 Surface
+	backgroundDark = Color3.fromRGB(24, 24, 24),       -- Recessed
+	backgroundHover = Color3.fromRGB(45, 45, 48),      -- Hover state
 
-	-- Text
-	textPrimary = Color3.fromRGB(248, 250, 252),       -- Almost white
-	textSecondary = Color3.fromRGB(168, 176, 190),     -- Muted gray-blue
-	textMuted = Color3.fromRGB(100, 110, 125),         -- Very muted
+	-- Text (High contrast hierarchy)
+	textPrimary = Color3.fromRGB(212, 212, 212),       -- #D4D4D4 Primary
+	textSecondary = Color3.fromRGB(156, 156, 156),     -- #9C9C9C Secondary
+	textMuted = Color3.fromRGB(106, 106, 106),         -- #6A6A6A Muted
 
-	-- Accent Colors (Tailwind-inspired)
-	accentPrimary = Color3.fromRGB(99, 102, 241),      -- Indigo 500
-	accentPrimaryHover = Color3.fromRGB(129, 140, 248), -- Indigo 400
-	accentSuccess = Color3.fromRGB(34, 197, 94),       -- Green 500
-	accentWarning = Color3.fromRGB(251, 191, 36),      -- Amber 400
-	accentError = Color3.fromRGB(239, 68, 68),         -- Red 500
+	-- Accent Colors (VS Code inspired)
+	accentPrimary = Color3.fromRGB(0, 122, 204),       -- #007ACC VS Code Blue
+	accentPrimaryHover = Color3.fromRGB(28, 151, 234), -- Lighter blue
+	accentSuccess = Color3.fromRGB(35, 134, 54),       -- Green (muted)
+	accentWarning = Color3.fromRGB(205, 145, 60),      -- Amber (muted)
+	accentError = Color3.fromRGB(196, 57, 57),         -- Red (muted)
 
 	-- UI Elements
-	buttonDisabled = Color3.fromRGB(75, 80, 95),
-	codeBackground = Color3.fromRGB(16, 16, 20),
-	codeBorder = Color3.fromRGB(55, 60, 75),
+	buttonDisabled = Color3.fromRGB(60, 60, 60),
+	codeBackground = Color3.fromRGB(24, 24, 24),
+	codeBorder = Color3.fromRGB(50, 50, 50),
 
-	-- Chat Messages
-	messageUser = Color3.fromRGB(45, 50, 80),          -- User bubble (indigo tint)
-	messageAssistant = Color3.fromRGB(38, 40, 48),     -- AI bubble (neutral)
-	messageSystem = Color3.fromRGB(30, 42, 48),        -- System (subtle teal-gray)
+	-- Chat Messages (Subtle, professional)
+	messageUser = Color3.fromRGB(38, 42, 52),          -- User bubble
+	messageAssistant = Color3.fromRGB(32, 32, 34),     -- AI bubble (nearly bg)
+	messageSystem = Color3.fromRGB(34, 38, 42),        -- System
 
 	-- Planning & Tool Activity
-	messagePlanning = Color3.fromRGB(38, 38, 55),      -- Planning (purple tint)
-	messageVerification = Color3.fromRGB(35, 45, 58),  -- Verification (blue tint)
-	toolActivityBg = Color3.fromRGB(28, 32, 42),       -- Tool operations
-	toolSuccessBorder = Color3.fromRGB(34, 197, 94),   -- Matches accentSuccess
-	toolPendingBorder = Color3.fromRGB(99, 102, 241),  -- Matches accentPrimary
+	messagePlanning = Color3.fromRGB(36, 36, 42),      -- Planning
+	messageVerification = Color3.fromRGB(34, 40, 48),  -- Verification
+	toolActivityBg = Color3.fromRGB(28, 28, 30),       -- Tool operations
+	toolSuccessBorder = Color3.fromRGB(35, 134, 54),   -- Matches accentSuccess
+	toolPendingBorder = Color3.fromRGB(0, 122, 204),   -- Matches accentPrimary
 
 	-- Collapsible Headers
-	collapsibleHeader = Color3.fromRGB(45, 50, 65),    -- Header background
-	collapsibleHeaderHover = Color3.fromRGB(55, 60, 78), -- Header hover
+	collapsibleHeader = Color3.fromRGB(40, 40, 42),    -- Header background
+	collapsibleHeaderHover = Color3.fromRGB(50, 50, 54), -- Header hover
 }
 
 -- Icons (Emoji + Stylish symbols for Roblox TextLabel)
@@ -363,6 +391,10 @@ Constants.ICONS = {
 	COST = "💰",
 	TOKENS = "🔢",
 
+	-- File tree
+	FOLDER = "📁",
+	SCRIPT = "📄",
+
 	-- Misc
 	KEY = "🔑",
 	STAR = "⭐",
@@ -370,27 +402,78 @@ Constants.ICONS = {
 	BULLET = "•",
 }
 
--- UI Dimensions
+-- UI Dimensions (Compact, professional typography)
 Constants.UI = {
-	WIDGET_DEFAULT_WIDTH = 400,
-	WIDGET_DEFAULT_HEIGHT = 600,
-	WIDGET_MIN_WIDTH = 300,
+	WIDGET_DEFAULT_WIDTH = 700,
+	WIDGET_DEFAULT_HEIGHT = 550,
+	WIDGET_MIN_WIDTH = 400,
 	WIDGET_MIN_HEIGHT = 400,
-	PADDING = 12,
-	ELEMENT_GAP = 8,
-	CORNER_RADIUS = 8,
-	FONT_SIZE_HEADER = 20,
-	FONT_SIZE_NORMAL = 14,
-	FONT_SIZE_SMALL = 12,
-	FONT_SIZE_CODE = 12,
+	PADDING = 8,                 -- Reduced from 12
+	PADDING_SMALL = 4,           -- Internal padding
+	ELEMENT_GAP = 4,             -- Reduced from 8
+	CORNER_RADIUS = 4,           -- Reduced from 8
+
+	-- Typography Hierarchy (clean, professional)
+	FONT_SIZE_HEADER = 14,       -- Reduced from 20 (section headers)
+	FONT_SIZE_SUBHEADER = 11,    -- New: uppercase labels
+	FONT_SIZE_NORMAL = 12,       -- Reduced from 14 (body text)
+	FONT_SIZE_SMALL = 10,        -- Reduced from 12 (secondary)
+	FONT_SIZE_TINY = 9,          -- New: timestamps, hints
+	FONT_SIZE_CODE = 11,         -- Code (Fira Mono style)
+	LINE_HEIGHT = 1.4,           -- For readability
+
+	-- Fonts
 	FONT_HEADER = Enum.Font.GothamBold,
 	FONT_NORMAL = Enum.Font.Gotham,
 	FONT_CODE = Enum.Font.Code,
 	FONT_MONO = Enum.Font.Code,
-	HEADER_HEIGHT = 30,
-	BUTTON_HEIGHT = 40,
-	INPUT_HEIGHT = 60,
-	STATUS_MIN_HEIGHT = 80,
+
+	-- Layout Heights (compact)
+	HEADER_HEIGHT = 28,          -- Reduced from 30
+	BUTTON_HEIGHT = 28,          -- Reduced from 40
+	INPUT_HEIGHT = 44,           -- Reduced from 60
+	STATUS_MIN_HEIGHT = 24,      -- Reduced from 80
+
+	-- Z-Index Layering (for proper UI stacking)
+	ZINDEX = {
+		BASE = 1,                -- Base UI elements
+		WIDGETS = 10,            -- Interactive widgets
+		MODAL = 100,             -- Modal dialogs
+		TOAST = 1000,            -- Toast notifications (always on top)
+	}
+}
+
+-- ============================================================================
+-- COMMAND CENTER UI (Three-Pane Dashboard)
+-- ============================================================================
+Constants.COMMAND_CENTER = {
+	enabled = true,
+	minWidgetWidth = 400,              -- Below this, collapse side panes to icons
+	minWidgetHeight = 400,
+	paneWidths = {
+		left = 0.20,                   -- 20% - Brain pane
+		center = 0.60,                 -- 60% - Stream pane (chat)
+		right = 0.20                   -- 20% - Mission pane
+	},
+	collapsedPaneWidth = 36,           -- Width when collapsed (icons only)
+	headerHeight = 32,                 -- Reduced from 36
+	inputHeight = 44,                  -- Reduced from 60
+	statusBarHeight = 24,              -- Reduced from 28
+	paneGap = 2,                       -- Gap between panes
+	sectionGap = 4,                    -- Reduced from 8
+
+	-- Toast notifications
+	toastEnabled = true,
+	toastDuration = 3,
+	toastMaxVisible = 3,
+
+	-- Colors for Command Center (VS Code theme)
+	colors = {
+		paneBackground = Color3.fromRGB(30, 30, 30),   -- Match main bg
+		paneBorder = Color3.fromRGB(45, 45, 48),
+		sectionHeader = Color3.fromRGB(37, 37, 38),
+		collapsedPane = Color3.fromRGB(32, 32, 34),
+	}
 }
 
 -- Error Messages

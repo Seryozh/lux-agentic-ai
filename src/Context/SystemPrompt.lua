@@ -643,10 +643,33 @@ function SystemPrompt.build(context)
 	-- 1. Base prompt (always included)
 	table.insert(parts, BASE_PROMPT)
 
-	-- 2. Complexity-specific guidance (if enabled)
+	-- 2. Complexity-specific guidance & Living Plan
 	if Constants.ADAPTIVE_PROMPT.enabled and Constants.ADAPTIVE_PROMPT.includeComplexityGuidance then
 		local taskAnalysis = context.taskAnalysis
 		if taskAnalysis then
+			local planStr = ""
+			-- FIX: Defensive check for modules
+			if context.modules and context.modules.TaskPlanner then
+				planStr = context.modules.TaskPlanner.formatPlan()
+			end
+
+			local complexityPart = string.format([[
+## Task Complexity & Living Plan
+
+My heuristic analysis suggests this is a **%s** task. 
+Do you agree with this assessment? If you believe it's more complex, escalate your planning accordingly.
+
+%s
+
+**Living Plan Rules:**
+1. You MUST maintain the plan above.
+2. When starting a step, state: "Starting Ticket #[ID]: [Text]"
+3. If a step fails, you may insert a "Repair Ticket" (e.g., 2a) to fix the issue before proceeding.
+4. If the plan exceeds 3 tickets, escalate complexity to COMPLEX.
+]], taskAnalysis.heuristicSuggestion:upper(), planStr)
+
+			table.insert(parts, complexityPart)
+
 			if taskAnalysis.complexity == "complex" then
 				table.insert(parts, COMPLEX_TASK_GUIDANCE)
 			elseif taskAnalysis.complexity == "medium" then
@@ -781,6 +804,7 @@ function SystemPrompt.buildComplete(userMessage, modules, precomputedAnalysis)
 	end
 
 	-- Build the main prompt
+	context.modules = modules
 	local systemPrompt = SystemPrompt.build(context)
 
 	-- Add script context (filtered by relevance, with size cap)

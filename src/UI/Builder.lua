@@ -2,11 +2,18 @@
     UI/Builder.lua
     Main UI structure creation for Lux plugin
     Enhanced with hover effects and better styling
+
+    Supports two modes:
+    - Classic: Single-pane vertical chat (for narrow widgets)
+    - Command Center: Three-pane dashboard (for wider widgets)
 ]]
 
 local Constants = require(script.Parent.Parent.Shared.Constants)
 local Create = require(script.Parent.Create)
 local Components = require(script.Parent.Components)
+
+-- Lazy-load Command Center to avoid circular dependencies
+local CommandCenterBuilder = nil
 
 local Builder = {}
 
@@ -33,12 +40,12 @@ local function addHoverEffect(button, normalColor, hoverColor)
 end
 
 --[[
-    Create the main UI structure
+    Create the classic single-pane UI structure (legacy)
     @param widget DockWidgetPluginGui - The plugin widget container
     @param state table - State table to store UI references
     @return table - { rescanButton, sendButton, textInput }
 ]]
-function Builder.createUI(widget, state)
+function Builder.createClassicUI(widget, state)
 	-- Main container
 	local mainFrame = Create.new("Frame", {
 		Name = "MainFrame",
@@ -316,6 +323,43 @@ function Builder.createUI(widget, state)
 		sendButton = sendButton,
 		textInput = textInput
 	}
+end
+
+--[[
+    Create the main UI structure with automatic mode selection
+    Uses Command Center (three-pane) when enabled in config.
+    The PaneContainer handles responsive collapsing for narrow widths.
+
+    @param widget DockWidgetPluginGui - The plugin widget container
+    @param state table - State table to store UI references
+    @return table - Button/input references for event binding
+]]
+function Builder.createUI(widget, state)
+	local cc = Constants.COMMAND_CENTER
+
+	-- Use Command Center if enabled in config
+	if cc and cc.enabled then
+		-- Lazy-load Command Center builder
+		if not CommandCenterBuilder then
+			CommandCenterBuilder = require(script.Parent.CommandCenterBuilder)
+		end
+
+		state.commandCenterEnabled = true
+		return CommandCenterBuilder.createUI(widget, state)
+	end
+
+	-- Fall back to classic single-pane layout
+	state.commandCenterEnabled = false
+	return Builder.createClassicUI(widget, state)
+end
+
+--[[
+    Check if Command Center mode is enabled for the given state
+    @param state table
+    @return boolean
+]]
+function Builder.isCommandCenterEnabled(state)
+	return state and state.commandCenterEnabled == true
 end
 
 return Builder

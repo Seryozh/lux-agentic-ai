@@ -329,14 +329,24 @@ function ApiClient.callAPI(messages, tools)
 			elseif statusCode == 402 then
 				return { success = false, error = "Insufficient credits. Add credits at openrouter.ai" }
 			elseif RETRY_CODES[statusCode] and attempt < MAX_RETRIES then
-				-- Retryable error - exponential backoff
-				local backoff = math.pow(2, attempt - 1) * 2  -- 2s, 4s, 8s
-				lastError = string.format("HTTP %d - retrying...", statusCode)
-				if Constants.DEBUG then
-					print(string.format("[Lux DEBUG] HTTP %d, retrying in %.1fs (attempt %d/%d)",
-						statusCode, backoff, attempt, MAX_RETRIES))
+				-- Retryable error - check headers first, then fallback to exponential backoff
+				local retryAfter = result.Headers["retry-after"] or result.Headers["Retry-After"] or result.Headers["x-ratelimit-reset"]
+				local waitTime = tonumber(retryAfter)
+
+				if waitTime then
+					if Constants.DEBUG then
+						print(string.format("[Lux] Rate limited. Waiting %d seconds (per API request)...", waitTime))
+					end
+					task.wait(waitTime + 1) -- Add 1s buffer
+				else
+					local backoff = math.pow(2, attempt - 1) * 2  -- 2s, 4s, 8s
+					lastError = string.format("HTTP %d - retrying...", statusCode)
+					if Constants.DEBUG then
+						print(string.format("[Lux DEBUG] HTTP %d, retrying in %.1fs (attempt %d/%d)",
+							statusCode, backoff, attempt, MAX_RETRIES))
+					end
+					task.wait(backoff)
 				end
-				task.wait(backoff)
 			else
 				-- Non-retryable error or max retries exceeded
 				local errorMsg = "HTTP " .. statusCode
@@ -344,6 +354,15 @@ function ApiClient.callAPI(messages, tools)
 					errorMsg = "Rate limited after " .. MAX_RETRIES .. " retries. Please wait and try again."
 				elseif statusCode >= 500 then
 					errorMsg = "OpenRouter server error (HTTP " .. statusCode .. "). Please try again later."
+				elseif statusCode == 400 then
+					-- HTTP 400 = Bad Request - ALWAYS log the response body for debugging
+					warn("[Lux] HTTP 400 Bad Request - API rejected the request")
+					warn("[Lux] Response body: " .. (result.Body and result.Body:sub(1, 500) or "empty"))
+					-- Also log the REQUEST body to see what we sent
+					if requestBodyJson then
+						warn("[Lux] Request body (first 500 chars): " .. requestBodyJson:sub(1, 500))
+					end
+					errorMsg = "HTTP 400: Bad Request - Check console for details"
 				end
 
 				if Constants.DEBUG then
@@ -510,8 +529,9 @@ function ApiClient.generateSummary(historyToSummarize)
 
 	if success and result.Success then
 		local ok, parsed = pcall(HttpService.JSONDecode, HttpService, result.Body)
-		if ok and parsed.choices and parsed.choices[1] then
-			return parsed.choices[1].message.content
+		local choice = parsed and parsed.choices and parsed.choices[1]
+		if ok and choice and choice.message and choice.message.content then
+			return choice.message.content
 		end
 	end
 

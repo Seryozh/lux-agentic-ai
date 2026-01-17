@@ -13,6 +13,7 @@
 ]]
 
 local Constants = require(script.Parent.Parent.Shared.Constants)
+local Utils = require(script.Parent.Parent.Shared.Utils)
 
 -- ============================================================================
 -- MODULE REFERENCES (static requires for Creator Store compliance)
@@ -34,6 +35,14 @@ local WorkingMemory = require(script.Parent.Parent.Memory.WorkingMemory)
 local SessionManager = {}
 
 -- ============================================================================
+-- REACTIVE EVENT SYSTEM
+-- ============================================================================
+
+-- OnUpdate: Fires every 1.0 seconds and on state changes
+-- Listeners can use this to refresh UI components reactively
+SessionManager.OnUpdate = Utils.Signal.new()
+
+-- ============================================================================
 -- STATE
 -- ============================================================================
 
@@ -43,7 +52,86 @@ local state = {
 	taskStartTime = nil,
 	conversationStartTime = nil,
 	taskCount = 0,
+	pulseThread = nil,
 }
+
+-- ============================================================================
+-- REACTIVE PULSE SYSTEM
+-- ============================================================================
+
+--[[
+    Start the reactive pulse loop that fires OnUpdate every 1.0 seconds
+    This drives UI updates and memory decay
+]]
+local function startPulse()
+	if state.pulseThread then
+		return
+	end
+
+	state.pulseThread = task.spawn(function()
+		while state.conversationActive do
+			task.wait(1.0)
+
+			-- Decay working memory
+			if WorkingMemory and WorkingMemory.decay then
+				WorkingMemory.decay()
+			end
+
+			-- Fire update signal
+			SessionManager.OnUpdate:Fire()
+		end
+	end)
+end
+
+--[[
+    Stop the reactive pulse loop
+]]
+local function stopPulse()
+	if state.pulseThread then
+		task.cancel(state.pulseThread)
+		state.pulseThread = nil
+	end
+end
+
+--[[
+    Initialize reactive hooks for CircuitBreaker and TaskPlanner
+    These wrap existing callbacks to emit OnUpdate signals
+]]
+local function initializeReactiveHooks()
+	-- Hook CircuitBreaker status changes
+	local oldBreakerCallback = CircuitBreaker.onStatusChange
+	CircuitBreaker.onStatusChange = function(status)
+		if oldBreakerCallback then
+			oldBreakerCallback(status)
+		end
+		SessionManager.OnUpdate:Fire()
+	end
+
+	-- Hook TaskPlanner ticket updates
+	local oldPlannerCallback = TaskPlanner.onTicketUpdate
+	TaskPlanner.onTicketUpdate = function(ticketId)
+		if oldPlannerCallback then
+			oldPlannerCallback(ticketId)
+		end
+		SessionManager.OnUpdate:Fire()
+	end
+
+	-- Hook TaskPlanner plan creation
+	local oldPlanCreatedCallback = TaskPlanner.onPlanCreated
+	TaskPlanner.onPlanCreated = function(plan)
+		if oldPlanCreatedCallback then
+			oldPlanCreatedCallback(plan)
+		end
+		SessionManager.OnUpdate:Fire()
+	end
+
+	if Constants.DEBUG then
+		print("[SessionManager] Reactive hooks initialized")
+	end
+end
+
+-- Initialize hooks immediately on module load
+initializeReactiveHooks()
 
 -- ============================================================================
 -- CONVERSATION LIFECYCLE
@@ -57,6 +145,9 @@ function SessionManager.onConversationStart()
 	state.conversationActive = true
 	state.conversationStartTime = tick()
 	state.taskCount = 0
+
+	-- Start reactive pulse
+	startPulse()
 
 	-- Clear all transient state
 	if ErrorAnalyzer and ErrorAnalyzer.clearHistory then 
@@ -194,14 +285,20 @@ end
     @param summary string|nil
 ]]
 function SessionManager.onTaskComplete(success, summary)
+	-- CRITICAL: Clear the Flight Plan when task completes
+	local TaskPlanner = require(script.Parent.Parent.Planning.TaskPlanner)
+	if TaskPlanner and TaskPlanner.clearPlan then
+		TaskPlanner.clearPlan()
+	end
+
 	-- Record outcome in DecisionMemory
 	if DecisionMemory and DecisionMemory.endSequence then
 		DecisionMemory.endSequence(success, summary)
 	end
 
 	-- Clear task-specific state
-	if ErrorAnalyzer and ErrorAnalyzer.pruneStaleErrors then 
-		ErrorAnalyzer.pruneStaleErrors() 
+	if ErrorAnalyzer and ErrorAnalyzer.pruneStaleErrors then
+		ErrorAnalyzer.pruneStaleErrors()
 	end
 
 	-- Record completion in working memory
@@ -234,6 +331,9 @@ end
     Called when CONVERSATION ends (plugin unload or explicit reset)
 ]]
 function SessionManager.onConversationEnd()
+	-- Stop reactive pulse
+	stopPulse()
+
 	-- Save any pending state
 	if ProjectContext and ProjectContext.save then 
 		ProjectContext.save() 

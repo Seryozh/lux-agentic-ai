@@ -15,6 +15,20 @@ local Constants = require(script.Parent.Parent.Shared.Constants)
 local CircuitBreaker = {}
 
 -- ============================================================================
+-- EVENT CALLBACKS (for Command Center UI integration)
+-- ============================================================================
+
+-- This callback is set by the UI to receive status updates
+CircuitBreaker.onStatusChange = nil  -- function(status)
+
+-- Helper to fire status change event
+local function fireStatusChange()
+	if CircuitBreaker.onStatusChange then
+		CircuitBreaker.onStatusChange(CircuitBreaker.getStatus())
+	end
+end
+
+-- ============================================================================
 -- STATE
 -- ============================================================================
 
@@ -76,6 +90,9 @@ function CircuitBreaker.recordFailure(toolName, error)
 				state.failures, state.totalTrips))
 		end
 
+		-- Fire status change event
+		fireStatusChange()
+
 		return {
 			halt = true,
 			message = string.format(
@@ -111,6 +128,8 @@ end
     Record a success and potentially close the circuit
 ]]
 function CircuitBreaker.recordSuccess()
+	local previousMode = state.mode
+
 	if CONFIG.resetOnSuccess then
 		state.failures = 0
 	end
@@ -128,6 +147,11 @@ function CircuitBreaker.recordSuccess()
 	-- Reset per-tool counters
 	if CONFIG.trackPerTool then
 		toolCircuits = {}
+	end
+
+	-- Fire status change event if mode changed
+	if previousMode ~= state.mode then
+		fireStatusChange()
 	end
 end
 
@@ -177,6 +201,11 @@ function CircuitBreaker.forceReset()
 
 	if Constants.DEBUG and wasOpen then
 		print("[CircuitBreaker] Force reset by user")
+	end
+
+	-- Fire status change event
+	if wasOpen then
+		fireStatusChange()
 	end
 end
 

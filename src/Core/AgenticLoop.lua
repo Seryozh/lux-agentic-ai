@@ -180,11 +180,39 @@ local function processToolBatch(startIndex, context)
 
 		-- Record tool call for TaskPlanner (session tracking)
 		TaskPlanner.recordToolCall(functionCall.name, toolSuccess)
+		
+		-- Update Living Plan ticket status & Self-healing (v2.0)
+		local currentPlan = TaskPlanner.getCurrentPlan()
+		if currentPlan and currentPlan.currentTicketId then
+			local ticketStatus = toolSuccess and "DONE" or "FAILED"
+			
+			-- Self-healing logic: Insert repair ticket on failure
+			if not toolSuccess and not toolResult.validationFailed then
+				local repairTask = "Investigate error: " .. (toolResult.error or "Unknown tool error")
+				TaskPlanner.addTicket(repairTask, currentPlan.currentTicketId)
+				ticketStatus = "RETRYING"
+			end
+			
+			TaskPlanner.updateTicket(currentPlan.currentTicketId, ticketStatus, toolResult.error or "Success")
+			
+			-- Refresh visualization
+			if context.chatRenderer and context.chatRenderer.refreshPlan then
+				context.chatRenderer.refreshPlan(TaskPlanner.formatPlan())
+			end
+		end
 
 		-- Record tool call for DecisionMemory (pattern learning)
 		if Constants.DECISION_MEMORY.enabled then
 			local resultSummary = toolResult.error or (toolResult.success and "success") or "completed"
 			DecisionMemory.recordTool(functionCall.name, toolSuccess, resultSummary)
+
+			-- TRAUMA: Flag scripts that caused failures
+			if not toolSuccess and functionCall.args and functionCall.args.path then
+				DecisionMemory.flagScript(functionCall.args.path, resultSummary)
+			elseif toolSuccess and functionCall.args and functionCall.args.path then
+				-- WISDOM: Clear flag on successful repair
+				DecisionMemory.unflagScript(functionCall.args.path)
+			end
 		end
 
 		-- Display tool result AFTER execution (if ChatRenderer available)
@@ -274,6 +302,8 @@ end
 	@return table - Result of iteration or final completion
 ]]
 continueLoopFromIteration = function(currentIteration, statusCallback, chatRenderer)
+	task.wait() -- Yield to prevent stack overflow and keep UI responsive
+
 	-- If we exceeded max iterations
 	if currentIteration > Constants.MAX_AGENT_ITERATIONS then
 		return {
@@ -395,8 +425,26 @@ function AgenticLoop.resumeWithApproval(approved)
 			-- End decision memory sequence on error
 			if Constants.DECISION_MEMORY.enabled then
 				DecisionMemory.endSequence(false, "Failed to apply: " .. actualResult.error)
+
+				-- TRAUMA: Flag script failure after approval
+				if state.operation and state.operation.path then
+					DecisionMemory.flagScript(state.operation.path, actualResult.error)
+				end
 			end
-			return { success = false, error = "Failed to apply: " .. actualResult.error }
+
+			-- NEW: Turn the error into a tool result and keep going!
+			local sanitizedError = MessageConverter.sanitizeResponse({
+				success = false,
+				error = "Tool Execution Failed: " .. actualResult.error
+			})
+
+			-- Update the pending response placeholder
+			local responses = state.context.functionResponses
+			local lastResponse = responses[#responses].functionResponse
+			lastResponse.response = sanitizedError
+
+			-- RESUME instead of quitting
+			return processToolBatch(state.currentIndex + 1, state.context)
 		end
 	else
 		Tools.rejectOperation(state.operationId)
@@ -419,6 +467,19 @@ function AgenticLoop.resumeWithApproval(approved)
 		if not result.awaitingApproval and not result.awaitingUserFeedback then
 			if result.success then
 				SessionManager.onTaskComplete(true, result.text and result.text:sub(1, 100) or "Completed")
+
+				-- WISDOM: Clear flag on final success (if task focused on one script)
+				local history = ConversationHistory.getHistory()
+				local lastUserMsg = history[#history-1]
+				if lastUserMsg and lastUserMsg.role == "user" then
+					local text = lastUserMsg.parts[1].text or ""
+					-- Try to find path in user message
+					for path in text:gmatch("[%w%.]+") do
+						if path:find("%.") and Utils.getScriptByPath(path) then
+							DecisionMemory.unflagScript(path)
+						end
+					end
+				end
 			elseif result.error then
 				SessionManager.onTaskComplete(false, result.error)
 			end

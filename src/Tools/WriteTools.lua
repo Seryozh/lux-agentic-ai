@@ -16,6 +16,8 @@
 
 local Constants = require(script.Parent.Parent.Shared.Constants)
 local Utils = require(script.Parent.Parent.Shared.Utils)
+local IndexManager = require(script.Parent.Parent.Shared.IndexManager)
+local ProjectGraph = require(script.Parent.Parent.Shared.ProjectGraph)
 local ContextSelector = require(script.Parent.Parent.Context.ContextSelector)
 local ApprovalQueue = require(script.Parent.ApprovalQueue)
 
@@ -49,7 +51,7 @@ local function willPathExist(path)
 	local ApprovalQueue = require(script.Parent.ApprovalQueue)
 	local pendingOps = ApprovalQueue.getAll()
 
-	for _, op in ipairs(pendingOperations) do
+	for _, op in ipairs(pendingOps) do
 		if op.status == "pending" or op.status == "approved" then
 			if op.type == "create_instance" then
 				local willCreatePath = op.data.parent .. "." .. op.data.name
@@ -595,6 +597,10 @@ function WriteTools.applyPatchScript(data)
 	-- Apply edit
 	script.Source = newSource
 
+	-- SYSTEM UPDATE: We modified a script, manifest might need refresh
+	IndexManager.invalidate()
+	ProjectGraph.updateScript(data.path)
+
 	return {
 		path = data.path,
 		linesChanged = Utils.countLines(replaceContent),
@@ -620,6 +626,10 @@ function WriteTools.applyEditScript(data)
 
 	-- Apply edit
 	script.Source = data.newSource
+
+	-- SYSTEM UPDATE: We modified a script
+	IndexManager.invalidate()
+	ProjectGraph.updateScript(data.path)
 
 	return {
 		path = data.path,
@@ -658,6 +668,10 @@ function WriteTools.applyCreateScript(data)
 	newScript.Name = scriptName
 	newScript.Source = data.source
 	newScript.Parent = parent
+
+	-- SYSTEM UPDATE: Tell IndexManager the world has changed
+	IndexManager.invalidate()
+	ProjectGraph.updateScript(data.path)
 
 	return {
 		path = data.path,
@@ -715,6 +729,12 @@ function WriteTools.applyCreateInstance(data)
 	end
 
 	instance.Parent = parent
+
+	-- SYSTEM UPDATE: Only invalidate if we created a container that might hold scripts
+	-- or if we created a script instance directly
+	if data.className:match("Script") or data.className:match("Folder") or data.className:match("Model") then
+		IndexManager.invalidate()
+	end
 
 	-- Brief yield to ensure Roblox hierarchy is updated (prevents race conditions)
 	task.wait()
@@ -812,6 +832,10 @@ function WriteTools.applyDeleteInstance(data)
 	ChangeHistoryService:SetWaypoint("Lux: Delete " .. instanceName)
 
 	instance:Destroy()
+
+	-- SYSTEM UPDATE: We removed something, map is dirty
+	IndexManager.invalidate()
+	ProjectGraph.updateScript(data.path)
 
 	return {
 		deleted = data.path

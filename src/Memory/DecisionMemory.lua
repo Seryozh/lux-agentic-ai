@@ -15,13 +15,24 @@ local Constants = require(script.Parent.Parent.Shared.Constants)
 local DecisionMemory = {}
 
 -- ============================================================================
+-- EVENT CALLBACKS (for UI integration)
+-- ============================================================================
+
+-- Called when a warning is generated (for toast notifications)
+DecisionMemory.onWarning = nil  -- function(message, severity)
+
+-- Called when a script is flagged as problematic
+DecisionMemory.onScriptFlagged = nil  -- function(path, reason)
+
+-- ============================================================================
 -- STATE
 -- ============================================================================
 
 -- In-memory pattern storage
 local patterns = {
-	successful = {},  -- Patterns that worked
-	failed = {}       -- Patterns that failed
+	successful = {}, -- Patterns that worked
+	failed = {}, -- Patterns that failed
+	flaggedScripts = {} -- Problematic scripts: [path] = { reason, timestamp }
 }
 
 -- Current sequence being recorded
@@ -149,6 +160,8 @@ function DecisionMemory.load()
 
 	if success and data.patterns then
 		patterns = data.patterns
+		-- Ensure flaggedScripts exists (backwards compatibility)
+		patterns.flaggedScripts = patterns.flaggedScripts or {}
 
 		if Constants.DEBUG then
 			print(string.format("[DecisionMemory] Loaded %d successful, %d failed patterns",
@@ -182,6 +195,14 @@ function DecisionMemory.save()
 
 	while #patterns.failed > Constants.DECISION_MEMORY.maxPatterns do
 		table.remove(patterns.failed, 1)
+	end
+
+	-- Clean up old flagged scripts (older than decayDays)
+	local cutoff = os.time() - (Constants.DECISION_MEMORY.decayDays * 86400)
+	for path, data in pairs(patterns.flaggedScripts) do
+		if (data.timestamp or 0) < cutoff then
+			patterns.flaggedScripts[path] = nil
+		end
 	end
 
 	local memoryValue = ensureMemoryValue()
@@ -751,6 +772,49 @@ function DecisionMemory.clearAll()
 	if Constants.DEBUG then
 		print("[DecisionMemory] All patterns cleared")
 	end
+end
+
+--[[
+    Flag a script as problematic
+    @param path string
+    @param reason string
+]]
+function DecisionMemory.flagScript(path, reason)
+	if not path then
+		return
+	end
+	patterns.flaggedScripts[path] = {
+		reason = reason or "Unknown failure",
+		timestamp = os.time()
+	}
+	DecisionMemory.save()
+
+	-- Fire callback for toast notification
+	if DecisionMemory.onScriptFlagged then
+		DecisionMemory.onScriptFlagged(path, reason)
+	end
+end
+
+--[[
+    Clear flag for a script (called after successful edit)
+    @param path string
+]]
+function DecisionMemory.unflagScript(path)
+	if not path then
+		return
+	end
+	if patterns.flaggedScripts[path] then
+		patterns.flaggedScripts[path] = nil
+		DecisionMemory.save()
+	end
+end
+
+--[[
+    Get all flagged scripts
+    @return table
+]]
+function DecisionMemory.getFlaggedScripts()
+	return patterns.flaggedScripts
 end
 
 --[[

@@ -5,6 +5,161 @@
 
 local Utils = {}
 
+--[=[
+    Janitor Class
+    A standard cleanup manager for connections, instances, and threads.
+    Prevents memory leaks by tracking and cleaning up resources.
+
+    Usage:
+        local janitor = Utils.Janitor.new()
+        janitor:Add(connection, "Disconnect")
+        janitor:Add(instance, "Destroy")
+        janitor:Cleanup()
+]=]
+local Janitor = {}
+Janitor.__index = Janitor
+
+function Janitor.new()
+	local self = setmetatable({}, Janitor)
+	self._items = {}
+	return self
+end
+
+function Janitor:Add(item, cleanupMethod, index)
+	cleanupMethod = cleanupMethod or "Destroy"
+
+	local entry = {
+		item = item,
+		method = cleanupMethod
+	}
+
+	if index then
+		self._items[index] = entry
+	else
+		table.insert(self._items, entry)
+	end
+
+	return item
+end
+
+function Janitor:Remove(index)
+	if type(index) == "number" then
+		table.remove(self._items, index)
+	else
+		self._items[index] = nil
+	end
+end
+
+function Janitor:Cleanup()
+	for _, entry in pairs(self._items) do
+		if entry and entry.item then
+			local item = entry.item
+			local method = entry.method
+
+			if type(method) == "string" then
+				if typeof(item) == "RBXScriptConnection" then
+					item:Disconnect()
+				elseif typeof(item) == "Instance" then
+					item:Destroy()
+				elseif type(item) == "table" and type(item[method]) == "function" then
+					item[method](item)
+				end
+			elseif type(method) == "function" then
+				method(item)
+			end
+		end
+	end
+
+	self._items = {}
+end
+
+function Janitor:Destroy()
+	self:Cleanup()
+end
+
+Utils.Janitor = Janitor
+
+--[=[
+    FastSignal Class
+    A pure Lua signal implementation (no BindableEvent overhead).
+    Used for reactive event-driven programming.
+
+    Usage:
+        local signal = Utils.Signal.new()
+        local connection = signal:Connect(function(data)
+            print("Signal fired with data:", data)
+        end)
+        signal:Fire("hello")
+        connection:Disconnect()
+]=]
+local Signal = {}
+Signal.__index = Signal
+
+local Connection = {}
+Connection.__index = Connection
+
+function Connection.new(signal, handler)
+	local self = setmetatable({}, Connection)
+	self._signal = signal
+	self._handler = handler
+	self._connected = true
+	return self
+end
+
+function Connection:Disconnect()
+	if not self._connected then
+		return
+	end
+
+	self._connected = false
+
+	local handlers = self._signal._handlers
+	for i = #handlers, 1, -1 do
+		if handlers[i] == self._handler then
+			table.remove(handlers, i)
+			break
+		end
+	end
+end
+
+function Signal.new()
+	local self = setmetatable({}, Signal)
+	self._handlers = {}
+	return self
+end
+
+function Signal:Connect(handler)
+	if type(handler) ~= "function" then
+		error("Signal:Connect expects a function handler", 2)
+	end
+
+	table.insert(self._handlers, handler)
+	return Connection.new(self, handler)
+end
+
+function Signal:Fire(...)
+	local handlers = self._handlers
+	for i = 1, #handlers do
+		task.spawn(handlers[i], ...)
+	end
+end
+
+function Signal:Wait()
+	local thread = coroutine.running()
+	local connection
+	connection = self:Connect(function(...)
+		connection:Disconnect()
+		task.spawn(thread, ...)
+	end)
+	return coroutine.yield()
+end
+
+function Signal:DisconnectAll()
+	self._handlers = {}
+end
+
+Utils.Signal = Signal
+
 --- Trim whitespace from both ends of a string
 --- @param s string
 --- @return string
