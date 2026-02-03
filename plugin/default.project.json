@@ -1,0 +1,24 @@
+{
+  "name": "Luxembourg",
+  "tree": {
+    "$className": "DataModel",
+    "ServerStorage": {
+      "$className": "ServerStorage",
+      "Luxembourg": {
+        "$path": "Main.server.lua",
+        "ProjectMap": {
+          "$path": "ProjectMap.lua"
+        },
+        "Backend": {
+          "$path": "Backend.lua"
+        },
+        "ScriptReader": {
+          "$path": "ScriptReader.lua"
+        },
+        "ActionExecutor": {
+          "$path": "ActionExecutor.lua"
+        }
+      }
+    }
+  }
+}
