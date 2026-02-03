@@ -13,7 +13,10 @@ local HttpService = game:GetService("HttpService")
 
 local Backend = {}
 
-Backend.BASE_URL = "http://localhost:8000"  -- change for production
+-- Production backend URL
+-- For local development, change this to "http://localhost:8000"
+-- For custom deployments, update to your deployed backend URL
+Backend.BASE_URL = "https://web-production-b781.up.railway.app"
 
 function Backend.sendChat(sessionId, userMessage, projectMap, apiKey)
 	local body = HttpService:JSONEncode({
