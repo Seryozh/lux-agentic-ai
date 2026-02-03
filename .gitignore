@@ -62,3 +62,4 @@ logiscan-ai/
 # Textbooks directory (if it contains large files)
 textbooks/*.pdf
 textbooks/*.epub
+.claude/
