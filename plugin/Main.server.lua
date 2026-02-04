@@ -372,7 +372,11 @@ local function showApplyButton(actions, onApply)
 	applyCorner.CornerRadius = UDim.new(0, 4)
 	applyCorner.Parent = applyBtn
 
+	local isApplying = false
 	applyBtn.MouseButton1Click:Connect(function()
+		if isApplying then return end  -- Prevent double-click
+		isApplying = true
+
 		applyBtn.Text = "Applying..."
 		applyBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
 		onApply()
@@ -522,8 +526,13 @@ function sendMessage()
 					end
 				end
 
-				actionsFrame:Destroy()
-				applyBtnFrame:Destroy()
+				-- Safe destroy - check if frames still exist
+				if actionsFrame and actionsFrame.Parent then
+					actionsFrame:Destroy()
+				end
+				if applyBtnFrame and applyBtnFrame.Parent then
+					applyBtnFrame:Destroy()
+				end
 
 				showStepComplete(currentPlan)
 				updateStatus("Ready", Color3.fromRGB(100, 200, 100))
