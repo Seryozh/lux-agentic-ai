@@ -26,7 +26,6 @@ local API_KEY = plugin:GetSetting("LuxOpenRouterKey") or ""
 local isProcessing = false
 local requestCount = 0
 local estimatedTokens = 0
-local currentPlan = nil
 
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(1, 0, 1, 0)
@@ -243,7 +242,6 @@ local function resetChat()
 	end
 	messageOrder = 0
 	estimatedTokens = 0
-	currentPlan = nil
 	SESSION_ID = HttpService:GenerateGUID(false)
 	updateRequestCount()
 	updateStatus("Ready", Color3.fromRGB(100, 200, 100))
@@ -269,44 +267,6 @@ local function addMessage(text, isUser)
 	label.Parent = chatScroll
 end
 
-local function showPlanProgress(plan)
-	if not plan or not plan.steps or #plan.steps == 0 then return end
-
-	local current = plan.current_step or 1
-	local total = plan.total_steps or #plan.steps
-
-	messageOrder += 1
-	local planFrame = Instance.new("Frame")
-	planFrame.Size = UDim2.new(1, -16, 0, 0)
-	planFrame.AutomaticSize = Enum.AutomaticSize.Y
-	planFrame.BackgroundColor3 = Color3.fromRGB(40, 55, 70)
-	planFrame.BorderSizePixel = 0
-	planFrame.LayoutOrder = messageOrder
-	planFrame.Parent = chatScroll
-
-	local planCorner = Instance.new("UICorner")
-	planCorner.CornerRadius = UDim.new(0, 4)
-	planCorner.Parent = planFrame
-
-	local planPadding = Instance.new("UIPadding")
-	planPadding.PaddingLeft = UDim.new(0, 10)
-	planPadding.PaddingRight = UDim.new(0, 10)
-	planPadding.PaddingTop = UDim.new(0, 8)
-	planPadding.PaddingBottom = UDim.new(0, 8)
-	planPadding.Parent = planFrame
-
-	local planLabel = Instance.new("TextLabel")
-	planLabel.Size = UDim2.new(1, 0, 0, 0)
-	planLabel.AutomaticSize = Enum.AutomaticSize.Y
-	planLabel.BackgroundTransparency = 1
-	planLabel.TextColor3 = Color3.fromRGB(180, 200, 220)
-	planLabel.Text = string.format("📋 Step %d/%d: %s", current, total, plan.steps[current] or "")
-	planLabel.TextWrapped = true
-	planLabel.TextXAlignment = Enum.TextXAlignment.Left
-	planLabel.Font = Enum.Font.SourceSansBold
-	planLabel.TextSize = 13
-	planLabel.Parent = planFrame
-end
 
 local function showActions(actions)
 	if not actions or #actions == 0 then return end
@@ -385,7 +345,7 @@ local function showApplyButton(actions, onApply)
 	return btnFrame
 end
 
-local function showStepComplete(plan)
+local function showComplete()
 	messageOrder += 1
 	local completeFrame = Instance.new("Frame")
 	completeFrame.Size = UDim2.new(1, -16, 0, 0)
@@ -411,42 +371,11 @@ local function showStepComplete(plan)
 	completeLabel.AutomaticSize = Enum.AutomaticSize.Y
 	completeLabel.BackgroundTransparency = 1
 	completeLabel.TextColor3 = Color3.fromRGB(200, 255, 200)
-	completeLabel.Text = "✓ Step Complete"
+	completeLabel.Text = "✓ Actions Applied"
 	completeLabel.Font = Enum.Font.SourceSansBold
 	completeLabel.TextSize = 13
 	completeLabel.TextXAlignment = Enum.TextXAlignment.Left
 	completeLabel.Parent = completeFrame
-
-	-- Show continue button if more steps
-	local hasMoreSteps = plan and plan.current_step and plan.total_steps
-		and plan.current_step < plan.total_steps
-
-	if hasMoreSteps then
-		messageOrder += 1
-		local btnFrame = Instance.new("Frame")
-		btnFrame.Size = UDim2.new(1, -16, 0, 36)
-		btnFrame.BackgroundTransparency = 1
-		btnFrame.LayoutOrder = messageOrder
-		btnFrame.Parent = chatScroll
-
-		local continueBtn = Instance.new("TextButton")
-		continueBtn.Size = UDim2.new(0, 150, 0, 32)
-		continueBtn.BackgroundColor3 = Color3.fromRGB(0, 140, 80)
-		continueBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		continueBtn.Text = "→ Continue Next Step"
-		continueBtn.Font = Enum.Font.SourceSansBold
-		continueBtn.TextSize = 14
-		continueBtn.Parent = btnFrame
-
-		local continueCorner = Instance.new("UICorner")
-		continueCorner.CornerRadius = UDim.new(0, 4)
-		continueCorner.Parent = continueBtn
-
-		continueBtn.MouseButton1Click:Connect(function()
-			inputBox.Text = "continue"
-			sendMessage()
-		end)
-	end
 end
 
 local function pollLoop(sessionId)
@@ -495,18 +424,7 @@ function sendMessage()
 		local tokens = estimateTokens(text .. (response.message or ""), #projectMap)
 		estimatedTokens = tokens
 		updateRequestCount()
-
-		-- Update plan state
-		if response.plan and response.plan.steps then
-			currentPlan = response.plan
-			updateStatus(string.format("Step %d/%d",
-				currentPlan.current_step or 1,
-				currentPlan.total_steps or 1),
-				Color3.fromRGB(100, 200, 255))
-			showPlanProgress(currentPlan)
-		else
-			updateStatus("Ready", Color3.fromRGB(100, 200, 100))
-		end
+		updateStatus("Ready", Color3.fromRGB(100, 200, 100))
 
 		addMessage(response.message, false)
 
@@ -526,22 +444,20 @@ function sendMessage()
 					end
 				end
 
-				-- Safe destroy - check if frames still exist
-				if actionsFrame and actionsFrame.Parent then
-					actionsFrame:Destroy()
-				end
-				if applyBtnFrame and applyBtnFrame.Parent then
-					applyBtnFrame:Destroy()
-				end
+				-- Use task.defer to destroy frames AFTER callback completes
+				-- (can't destroy from within child's callback)
+				task.defer(function()
+					if actionsFrame and actionsFrame.Parent then
+						actionsFrame:Destroy()
+					end
+					if applyBtnFrame and applyBtnFrame.Parent then
+						applyBtnFrame:Destroy()
+					end
+				end)
 
-				showStepComplete(currentPlan)
+				showComplete()
 				updateStatus("Ready", Color3.fromRGB(100, 200, 100))
 			end)
-		else
-			-- No actions but might have plan
-			if currentPlan and currentPlan.current_step < currentPlan.total_steps then
-				showStepComplete(currentPlan)
-			end
 		end
 	end)
 end
