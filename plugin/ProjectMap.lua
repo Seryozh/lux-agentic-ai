@@ -79,6 +79,67 @@ local function scanInstance(instance, indent, lines)
 	end
 end
 
+-- LAZY LOADING: Build only top-level view
+function ProjectMap.buildLazy()
+	local lines = { "Game" }
+
+	for _, containerName in ipairs(CONTAINERS) do
+		local container = game:FindFirstChild(containerName)
+		if container then
+			local childCount = #container:GetChildren()
+			local status = childCount > 0 and (" [" .. childCount .. " children]") or " [empty]"
+			table.insert(lines, "  " .. containerName .. status)
+		end
+	end
+
+	return table.concat(lines, "\n")
+end
+
+-- Get children of a specific path (for list_children tool)
+function ProjectMap.listChildren(targetPath)
+	-- Parse path like "game.Workspace" or "game.ServerScriptService.CombatSystem"
+	local parts = {}
+	for part in targetPath:gmatch("[^.]+") do
+		table.insert(parts, part)
+	end
+
+	-- Navigate to target
+	local current = game
+	for i = 2, #parts do  -- Skip "game"
+		current = current:FindFirstChild(parts[i])
+		if not current then
+			return "Error: Path not found: " .. targetPath
+		end
+	end
+
+	-- Build children list
+	local lines = {}
+	for _, child in ipairs(current:GetChildren()) do
+		if not IGNORED_NAMES[child.Name] then
+			local typeName = child.ClassName
+			local displayName = child.Name
+
+			if displayName ~= typeName then
+				displayName = displayName .. " (" .. typeName .. ")"
+			end
+
+			local childCount = #child:GetChildren()
+			if childCount > 0 then
+				displayName = displayName .. " [" .. childCount .. " children]"
+			end
+
+			table.insert(lines, "  " .. displayName)
+		end
+	end
+
+	if #lines == 0 then
+		return targetPath .. " [empty]"
+	end
+
+	return targetPath .. ":\n" .. table.concat(lines, "\n")
+end
+
+-- Legacy full scan (kept for backwards compatibility)
 function ProjectMap.build()
 	local lines = { "Game" }
 

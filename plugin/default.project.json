@@ -15,6 +15,9 @@
         "ScriptReader": {
           "$path": "ScriptReader.lua"
         },
+        "ScriptIndex": {
+          "$path": "ScriptIndex.lua"
+        },
         "ActionExecutor": {
           "$path": "ActionExecutor.lua"
         }

@@ -219,8 +219,28 @@ function handlers.modify_script(action)
 		return { "ERROR: " .. action.target .. " is not a script" }
 	end
 
+	-- HASH VERIFICATION: Check if script was modified since AI last saw it
+	if action.original_hash then
+		local HttpService = game:GetService("HttpService")
+		local currentSource = instance.Source
+		local currentHash = HttpService:GenerateGUID(false):sub(1, 8)  -- Simple hash substitute
+
+		-- Better hash: Use string length + first/last chars as proxy
+		local actualHash = #currentSource .. currentSource:sub(1, math.min(10, #currentSource)) .. currentSource:sub(-math.min(10, #currentSource))
+
+		if actualHash ~= action.original_hash then
+			return {
+				"⚠️  WARNING: Script was modified since AI analyzed it!",
+				"Current hash: " .. actualHash:sub(1, 20),
+				"Expected hash: " .. action.original_hash:sub(1, 20),
+				"SKIPPED modification to prevent data loss.",
+				"Suggestion: Ask AI to re-analyze the script first."
+			}
+		end
+	end
+
 	instance.Source = action.source
-	return { "Modified " .. action.target }
+	return { "✓ Modified " .. action.target }
 end
 
 function handlers.delete_script(action)
