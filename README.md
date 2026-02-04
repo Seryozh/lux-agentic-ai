@@ -1,490 +1,419 @@
-# 🤖 Lux (Luxembourg)
+# Lux (Luxembourg) 
 
-**AI-Powered Natural Language Game Development for Roblox Studio**
+### AI-Powered Natural Language Game Development for Roblox Studio
 
-[![Downloads](https://img.shields.io/badge/downloads-1000%2B-brightgreen)](https://create.roblox.com)
-[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-009688)](https://fastapi.tiangolo.com/)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Downloads](https://img.shields.io/badge/downloads-1500%2B-brightgreen)]()
+[![Python](https://img.shields.io/badge/python-3.11-blue)]()
+[![License](https://img.shields.io/badge/license-MIT-green)]()
 
-Lux is a Roblox Studio plugin that enables game developers to modify their games using natural language. Simply type what you want—"add double jump", "make the sky red", "create a damage system"—and watch as AI understands and executes your changes automatically.
+**Lux** is a production AI agent that enables game development in plain English. Describe what you want to build, and an autonomous AI analyzes your project, generates code, and executes modifications—all within Roblox Studio.
 
-> 🌟 **Featured on Roblox Creator Store** with 1,000+ active installations
-
----
-
-## 📋 Table of Contents
-
-- [The Problem](#-the-problem)
-- [The Solution](#-the-solution)
-- [Key Features](#-key-features)
-- [Architecture Highlights](#-architecture-highlights)
-- [Demo](#-demo)
-- [Installation](#-installation)
-- [Usage](#-usage)
-- [Tech Stack](#-tech-stack)
-- [Portfolio Highlights](#-portfolio-highlights-for-recruiters)
-- [Development](#-development)
-- [Contributing](#-contributing)
-- [License](#-license)
+🎮 **[Install from Roblox Creator Store](https://create.roblox.com/store/asset/131392966327387/Lux-AI-Agentic-Lua-Coding-Assistant)** | 📖 **[Read Full Architecture Doc](./lux-architecture.md)**
 
 ---
 
-## 🎯 The Problem
+## Why This Matters
 
-Roblox game development requires developers to:
-- Navigate complex hierarchies of thousands of game objects
-- Manually write and modify Lua scripts for game logic
-- Understand the entire codebase before making changes
-- Perform repetitive tasks like creating UI, setting properties, or implementing common game mechanics
+Game development requires deep technical knowledge: Lua scripting, Roblox APIs, UI systems, networking, game architecture. **Lux removes that barrier.**
 
-Additionally, Roblox Studio plugins face a **critical technical constraint**: they can only make **outbound HTTP requests** and cannot receive incoming connections. This makes traditional client-server architectures impossible.
-
-## 💡 The Solution
-
-Lux solves these problems with a novel **polling-based request/response bridge** that enables:
-
-✅ **Natural Language Game Modification**: Describe what you want in plain English, AI does the rest
-✅ **Intelligent Project Exploration**: Three-level analysis (structure → metadata → full code) minimizes API costs
-✅ **Two-Model Architecture**: 90% of work done by cost-effective orchestrator, expensive model only for complex code generation
-✅ **User Control**: Every change requires explicit approval—you stay in control
-✅ **Privacy-First**: BYOK (Bring Your Own Key) design—no data retention, no server-side costs
-
----
-
-## ✨ Key Features
-
-### 🗣️ Natural Language Interface
-```
-User: "Add double jump to the player's movement"
-Lux: [Analyzes project → Reads Movement script → Generates modification → Shows preview]
+Instead of:
+```lua
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+-- ...50 more lines for a sprint system
 ```
 
-### 🧠 Context-Aware AI
-- Builds lightweight project map before requesting any code
-- Intelligently explores only relevant scripts (not the entire game)
-- Caches metadata and script contents to minimize redundant requests
-- Understands game structure, dependencies, and naming conventions
+You write:
+```
+Add a sprint system with stamina that regenerates over time
+```
 
-### 💰 Cost-Optimized Two-Model System
-**Orchestrator Model** (Fast/Cheap - Gemini Flash)
-- Analyzes user requests
-- Decides what to explore
-- Plans tasks for worker
-- Handles conversational responses
-- Cost: ~$0.01/request
-
-**Worker Model** (Smart/Capable - Gemini Flash)
-- Reads and generates code
-- Creates precise modifications
-- Produces JSON action arrays
-- Only sees task context (not full conversation)
-- Cost: ~$0.05/request (only when needed)
-
-**Result**: 90% cost reduction compared to single-model approaches
-
-### 🎛️ 8 Action Types
-Lux can execute any modification in Roblox Studio:
-
-| Action | Description | Example |
-|--------|-------------|---------|
-| `set_property` | Modify instance properties | Change lighting, colors, physics |
-| `create_instance` | Create new game objects | Parts, Models, UI, Effects |
-| `delete_instance` | Remove objects | Clean up old content |
-| `move_instance` | Reparent objects | Reorganize hierarchy |
-| `clone_instance` | Duplicate objects | Create templates |
-| `create_script` | Write new scripts | Game logic, AI, systems |
-| `modify_script` | Update existing scripts | Add features, fix bugs |
-| `delete_script` | Remove scripts | Clean up unused code |
-
-### 🔒 Security & Privacy
-- **BYOK Design**: Users provide their own OpenRouter API key
-- **No Data Retention**: Server stores no user data or API keys
-- **User Approval Required**: Every action shows "Apply / Skip / Deny All" buttons
-- **Transparent Actions**: Clear descriptions of what will change
+Lux handles the rest.
 
 ---
 
-## 🏗️ Architecture Highlights
+## Key Features
+
+### 🤖 Agentic AI Architecture
+- **LangGraph orchestration** with autonomous decision-making
+- **Tool system** for project exploration (search, list, metadata, full script access)
+- **Continuous execution model**: Completes entire tasks in single response (no "continue" prompts)
+
+### 🔄 Novel Communication Pattern
+- **Polling bridge** enables bidirectional AI communication over Roblox's one-way HTTP constraint
+- **Async event synchronization** for real-time agent data requests
+- 100-300ms tool latency despite round-trip architecture
+
+### 💰 Cost-Optimized
+- **~90% reduction in API costs** via lazy loading (65k → 5.5k tokens/request)
+- Progressive disclosure: Top-level structure free, on-demand deep exploration
+- Hash-based deduplication prevents redundant operations
+
+### 🔒 Privacy-First
+- **Zero data retention**: Sessions stored in-memory only, deleted after 1 hour
+- **BYOK (Bring Your Own Key)**: User controls LLM access and costs
+- **Local execution**: All game modifications happen client-side
+
+### ⚡ Production-Ready
+- Hash-verified script modifications (prevents concurrent edit conflicts)
+- Session management with TTL-based cleanup (1hr sessions, 5min cleanup)
+- Graceful timeout handling (30s tool timeout) and fault tolerance
+- Pydantic validation for all requests/responses
+
+---
+
+## How It Works
+
+### System Architecture
+
+```
+┌─────────────────┐
+│  ROBLOX STUDIO  │
+│  ┌───────────┐  │
+│  │  Chat UI  │  │ ◄─── User: "Add a health bar"
+│  └─────┬─────┘  │
+│        │        │
+│  ┌─────▼─────┐  │
+│  │  Project  │  │ ◄─── Scans game structure (lazy)
+│  │  Scanner  │  │
+│  └─────┬─────┘  │
+│        │        │
+│  ┌─────▼─────┐  │
+│  │   HTTP    │  │
+│  │  Client   │  │
+│  └─────┬─────┘  │
+└────────┼────────┘
+         │ HTTPS
+         ▼
+┌─────────────────┐
+│  CLOUD BACKEND  │
+│  ┌───────────┐  │
+│  │  FastAPI  │  │ ◄─── Routing, session management
+│  └─────┬─────┘  │
+│        │        │
+│  ┌─────▼─────┐  │
+│  │ AI Agent  │  │ ◄─── LangGraph + LangChain
+│  │(LangGraph)│  │      Reasoning + tool calling
+│  └─────┬─────┘  │
+└────────┼────────┘
+         │ HTTPS
+         ▼
+┌─────────────────┐
+│   OPENROUTER    │ ◄─── Gemini/Claude/GPT-4
+└─────────────────┘
+```
 
 ### The Polling Bridge Pattern
 
-Roblox's one-way HTTP constraint required a novel architecture:
+**The Problem:** Roblox plugins can only make outbound HTTP requests. They cannot receive incoming connections or use WebSockets.
+
+**The Solution:** Async polling with event-based synchronization.
 
 ```
-┌─────────────────────────┐          ┌──────────────────────────┐
-│   Roblox Studio Plugin  │          │    FastAPI Backend       │
-│   (Lua)                 │          │    (Python)              │
-└─────────────────────────┘          └──────────────────────────┘
-          │                                      │
-          │ 1. POST /chat                        │
-          │    {message, project_map}            │
-          ├─────────────────────────────────────>│
-          │                                      │ 2. Agent needs script
-          │                                      │    Creates pending request
-          │                                      │    Waits with asyncio.Event
-          │ 3. GET /poll (0.5s intervals)        │
-          │<─────────────────────────────────────┤
-          │    {pending_requests: [script_name]} │
-          │                                      │
-          │ 4. Read script from game             │
-          │                                      │
-          │ 5. POST /poll/{id}/respond           │
-          │    {script_content}                  │
-          ├─────────────────────────────────────>│
-          │                                      │ 6. Event.set() wakes agent
-          │                                      │    Continues processing
-          │                                      │
-          │ 6. Return final response             │
-          │<─────────────────────────────────────┤
-          │    {message, actions[]}              │
-          │                                      │
-          │ 7. User approves → Execute actions   │
-          │                                      │
+1. Plugin → Backend: "Add a health bar"
+2. Backend → AI Agent: Start processing
+3. AI Agent: "I need to see the current PlayerScript"
+   ├─► Creates pending_request
+   └─► Awaits asyncio.Event()  [BLOCKS]
+4. Plugin → Backend: GET /poll (every 100ms)
+   └─► Receives: {requests: ["fetch PlayerScript"]}
+5. Plugin reads script from game
+6. Plugin → Backend: POST /respond with script content
+   └─► event.set()  [WAKES AGENT]
+7. AI Agent: Continues with data, generates actions
+8. Backend → Plugin: Response with actions
+9. User clicks "Apply" → Changes execute in game
 ```
 
-**Key Innovation**: Using `asyncio.Event` synchronization to pause agent execution while waiting for plugin responses, enabling true bidirectional communication over one-way HTTP.
+This enables true bidirectional communication within platform constraints.
 
-### Component Breakdown
-
-**Backend (Python/FastAPI)**
-- `main.py`: FastAPI server with 3 endpoints (`/chat`, `/poll`, `/poll/{id}/respond`)
-- `agent.py`: LangGraph-based two-model orchestration system
-- `session.py`: Polling bridge with asyncio synchronization
-- `tools.py`: Agent tools (`get_metadata`, `get_full_script`) with caching
-- `models.py`: Pydantic models with validation
-
-**Plugin (Lua/Roblox Studio)**
-- `Main.server.lua`: UI, chat interface, polling loop, action approval system
-- `Backend.lua`: HTTP client for all server communication
-- `ProjectMap.lua`: Game tree scanner (11 containers, efficient traversal)
-- `ScriptReader.lua`: Script content fetcher with path resolution
-- `ActionExecutor.lua`: Executes 8 action types with smart type conversion
+**[→ See Interactive Demo](https://sergeykudelin.com/lux/polling-bridge)** (click to understand visually)
 
 ---
 
-## 🎬 Demo
+## Technical Highlights
 
-> **Note**: Add demo GIF or video here showing the plugin in action
+### Agent Tools (4 Levels)
 
-**Example Workflow**:
-1. User types: "Add a red glowing part to the workspace"
-2. Lux analyzes the request (no scripts needed)
-3. Shows action preview: "Create Part in Workspace with properties..."
-4. User clicks "Apply"
-5. Red glowing part appears instantly
+| Tool | Purpose | Cost |
+|------|---------|------|
+| **Project Map** | Top-level structure | FREE (auto-included) |
+| **search_project(query)** | Semantic search across scripts | ~200 tokens |
+| **get_metadata(script)** | Quick preview (type, lines, deps) | ~100 tokens |
+| **get_full_script(script)** | Complete source + hash | ~1,000 tokens |
 
-**Complex Example**:
-1. User types: "Add double jump to player movement"
-2. Lux explores project structure
-3. Requests metadata for "Movement" script
-4. Requests full script contents
-5. Generates modified script with double jump logic
-6. Shows side-by-side diff (original vs modified)
-7. User clicks "Apply"
-8. Movement script updated, players can now double jump
+**Design:** Agents explore progressively from cheap to expensive operations.
+
+### Action Types (8 Primitives)
+
+All game modifications compose from 8 fundamental actions:
+
+- `set_property` - Modify attributes (color, size, position)
+- `create_instance` - Create new objects (Parts, UI, folders)
+- `delete_instance` - Remove objects
+- `move_instance` - Reparent in hierarchy
+- `clone_instance` - Duplicate from templates
+- `create_script` - Add new scripts
+- `modify_script` - Update existing scripts (hash-verified)
+- `delete_script` - Remove scripts
+
+### Hash Verification
+
+Script modifications require hash verification to prevent data loss:
+
+```python
+1. Agent requests: get_full_script("PlayerController")
+2. Plugin returns: {source: "...", hash: "a3f2c1..."}
+3. Agent modifies code, creates action with original_hash
+4. Executor verifies current hash == original_hash
+5. If match → apply changes
+   If mismatch → reject (concurrent edit detected)
+```
+
+**[→ See Implementation Details](https://sergeykudelin.com/lux/hash-verification)** (code walkthrough)
 
 ---
 
-## 📦 Installation
+## Tech Stack
 
-### Prerequisites
-- **Python 3.11+** (backend)
-- **Roblox Studio** (plugin)
-- **OpenRouter API Key** ([get one here](https://openrouter.ai/))
-
-### Backend Setup
-
-1. **Clone the repository**:
-```bash
-git clone https://github.com/Seryozh/lux-agentic-ai.git
-cd lux-agentic-ai/backend
-```
-
-2. **Create virtual environment**:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. **Install dependencies**:
-```bash
-pip install -r requirements.txt
-```
-
-4. **Configure environment** (optional):
-```bash
-cp .env.example .env
-# Edit .env to customize settings (host, port, timeouts, etc.)
-```
-
-5. **Run the server**:
-```bash
-python main.py
-# Server starts at http://0.0.0.0:8000
-```
-
-### Plugin Installation
-
-#### Option 1: Roblox Creator Store (Recommended)
-1. Open Roblox Studio
-2. Go to Creator Store → Plugins
-3. Search for "Lux" or "Luxembourg"
-4. Install the plugin
-
-#### Option 2: Manual Installation
-1. Open Roblox Studio
-2. Copy contents of `plugin/` directory
-3. Plugins → Manage Plugins → Install from File
-4. Select the plugin files
-
-### Configuration
-
-1. **Set OpenRouter API Key**:
-   - Open Lux plugin in Roblox Studio
-   - Click "Settings"
-   - Paste your OpenRouter API key
-   - Click "Save"
-
-2. **Backend URL** (for local development):
-   - Edit `plugin/Backend.lua`
-   - Change `BASE_URL` to `http://localhost:8000`
-   - Rebuild plugin with Rojo
+| Layer | Technology | Purpose |
+|-------|------------|---------|
+| **Plugin** | Lua/Roblox | UI, project scanning, action execution |
+| **Backend** | Python 3.11 / FastAPI | API server, session management |
+| **Agent Framework** | LangGraph | Stateful AI orchestration |
+| **LLM Integration** | LangChain | Tool calling, LLM abstraction |
+| **LLM Provider** | OpenRouter | Multi-model access (Gemini/Claude/GPT) |
+| **Validation** | Pydantic | Request/response schemas |
+| **Deployment** | Railway | Cloud hosting, auto-scaling |
+| **Distribution** | Roblox Creator Store | Plugin delivery, auto-updates |
 
 ---
 
-## 🚀 Usage
+## Usage
 
-### Basic Usage
+### 1. Install Plugin
+Download from [Roblox Creator Store](https://create.roblox.com/store/asset/)
 
-1. Open your game in Roblox Studio
-2. Open the Lux plugin (View → Lux)
-3. Type your request in natural language:
-   - "Make the sky dark with stars"
-   - "Add a jump boost pad in the workspace"
-   - "Create a simple round timer script"
-4. Review the proposed actions
-5. Click **Apply** to execute, **Skip** to ignore, or **Deny All** to cancel
+### 2. Get API Key
+Create account at [OpenRouter](https://openrouter.ai) and get API key
 
-### Advanced Examples
+### 3. Configure
+Open Lux in Roblox Studio → Paste API key → Save
 
-**Property Changes**:
+### 4. Start Building
 ```
-"Set lighting to nighttime with fog"
-"Make all parts in workspace bright red"
-"Change player walk speed to 32"
-```
+You: "Create a click-to-collect coin system"
 
-**Instance Creation**:
-```
-"Create a 50x50 baseplate at origin"
-"Add a TextLabel to ScreenGui showing player name"
-"Create a folder in ServerStorage called 'Weapons'"
-```
+Lux: I'll create a complete coin collection system with:
+1. Create Part "Coin" in Workspace
+2. Set Coin.Shape to Ball
+3. Set Coin.BrickColor to "Bright yellow"
+4. Create Script "CoinCollector" in ServerScriptService
+   [Full script with touch detection and player points]
 
-**Script Modifications**:
+[✓ Apply All Actions]
 ```
-"Add sprinting to the player movement script"
-"Fix the bug in the coin collection script where coins don't respawn"
-"Add sound effects to the jump script"
-```
-
-**Game Logic**:
-```
-"Implement a simple respawn system"
-"Create a damage script for touching red parts"
-"Add a leaderboard showing player coins"
-```
-
-### Tips for Best Results
-
-✅ **Be specific**: "Add double jump that works twice" better than "make jumping better"
-✅ **Reference names**: "Modify the PlayerMovement script" better than "change movement"
-✅ **One task at a time**: Multiple small requests > one complex request
-✅ **Review carefully**: Always check the proposed changes before applying
 
 ---
 
-## 🛠️ Tech Stack
+## Architecture Deep Dive
 
-### Backend
-- **[FastAPI](https://fastapi.tiangolo.com/)**: Modern async web framework
-- **[LangGraph](https://github.com/langchain-ai/langgraph)**: Agent orchestration and state management
-- **[LangChain](https://python.langchain.com/)**: LLM integration and tool calling
-- **[Pydantic](https://docs.pydantic.dev/)**: Data validation and settings management
-- **[Uvicorn](https://www.uvicorn.org/)**: ASGI server for production deployment
-- **[OpenRouter](https://openrouter.ai/)**: Multi-model LLM API gateway
+### Session Management
 
-### Plugin
-- **Lua 5.1**: Roblox scripting language
-- **Roblox Studio API**: Native integration with game engine
-- **HttpService**: Async HTTP client for backend communication
-
-### Infrastructure
-- **[Railway](https://railway.app/)**: Backend hosting and deployment
-- **[Rojo](https://rojo.space/)**: Roblox project management and syncing
-
----
-
-## 💼 Portfolio Highlights (For Recruiters)
-
-This project demonstrates several key competencies relevant to AI automation roles:
-
-### 🎯 Technical Skills
-
-**AI/LLM Integration**
-- Multi-model orchestration with cost optimization strategies
-- Tool calling and function execution frameworks
-- Prompt engineering for reliable structured outputs (JSON generation)
-- Context management and token optimization techniques
-
-**System Architecture**
-- Novel polling-based bidirectional communication over one-way protocols
-- Async/await patterns with Python's asyncio for concurrent operations
-- State management with LangGraph state machines
-- Session management with TTL-based cleanup
-
-**API Design**
-- RESTful API design with FastAPI
-- Request/response validation with Pydantic
-- CORS configuration for cross-origin requests
-- Comprehensive error handling and logging
-
-**Performance Optimization**
-- Three-level exploration strategy (structure → metadata → full code)
-- Intelligent caching to minimize redundant API calls
-- Two-model architecture reducing costs by 90%
-- Background task scheduling for maintenance operations
-
-### 🔧 Engineering Practices
-
-**Production-Ready Code**
-- Comprehensive input validation and error handling
-- Structured logging for debugging and monitoring
-- Configurable settings via environment variables
-- Session cleanup and memory management
-- CORS security and API key handling
-
-**Documentation**
-- Clear code comments and docstrings
-- Comprehensive README for users and developers
-- Architecture diagrams and data flow documentation
-- API endpoint documentation
-
-**Scalability Considerations**
-- Stateless server design (sessions can be moved to Redis)
-- Configurable timeouts and retry limits
-- Graceful error degradation
-- Health check endpoints for monitoring
-
-### 📊 Business Impact
-
-- **1,000+ Downloads**: Proven product-market fit
-- **Cost Optimization**: 90% reduction in API costs vs naive approaches
-- **User Control**: Privacy-first BYOK design
-- **Extensibility**: Plugin architecture allows easy addition of new action types
-
-### 🎓 Problem-Solving Approach
-
-This project showcases:
-1. **Identifying constraints**: Roblox's one-way HTTP limitation
-2. **Creative solutions**: Polling bridge with asyncio synchronization
-3. **Optimization**: Two-model architecture for cost efficiency
-4. **User-centric design**: Approval workflow for trust and control
-5. **Iterative improvement**: Started with single model, evolved to two-model system
-
----
-
-## 🔧 Development
-
-### Project Structure
 ```
-luxembourg/
-├── backend/              # Python FastAPI server
-│   ├── main.py          # Server + endpoints
-│   ├── agent.py         # Two-model orchestration
-│   ├── session.py       # Polling bridge
-│   ├── tools.py         # Agent tools
-│   ├── models.py        # Pydantic models
-│   ├── config.py        # Settings
-│   └── requirements.txt
-├── plugin/              # Lua Roblox plugin
-│   ├── Main.server.lua  # UI + orchestration
-│   ├── Backend.lua      # HTTP client
-│   ├── ProjectMap.lua   # Game scanner
-│   ├── ScriptReader.lua # Script fetcher
-│   └── ActionExecutor.lua
-└── textbooks/           # Documentation
-    └── README_LUXEMBOURG.md
+Session
+├── session_id              # Unique identifier (UUID)
+├── conversation_history    # Last 20 messages (sliding window)
+├── project_map             # Current game structure
+├── cached_metadata         # Tool response cache
+├── cached_scripts          # Script content cache
+├── pending_requests        # Awaiting plugin data
+├── fulfilled_data          # Received from plugin
+├── action_queue            # Generated actions
+└── executed_hashes         # Deduplication tracking
 ```
 
-### Running Tests
-```bash
-cd backend
-pytest tests/  # (Tests to be added)
+**Lifecycle:**
+- Created on first request
+- Stored in-memory only
+- Expires after 1 hour of inactivity (configurable via `SESSION_TTL`)
+- Cleaned up by background task every 5 minutes (configurable via `CLEANUP_INTERVAL`)
+
+### Cost Optimization
+
+**Before (Naive Approach):**
+```
+Every request includes:
+• Full project tree (all levels)     ~5,000 tokens
+• All script sources                 ~50,000 tokens
+• Previous conversation              ~10,000 tokens
+                                     ────────────
+Total per request:                   ~65,000 tokens
 ```
 
-### Building Plugin
-```bash
-cd plugin
-rojo build -o Luxembourg.rbxm
+**After (Luxembourg):**
+```
+Every request includes:
+• Top-level structure only           ~500 tokens
+• Conversation (last 20 msgs)        ~5,000 tokens
+                                     ────────────
+Base per request:                    ~5,500 tokens
+
+On-demand (only when needed):
+• Search results                     ~200 tokens
+• Script metadata                    ~100 tokens
+• Full script (per script)           ~1,000 tokens
 ```
 
-### Deployment
+**Result:** ~90% reduction in token usage
 
-**Backend (Railway)**:
-1. Connect GitHub repository to Railway
-2. Set environment variables
-3. Deploy automatically on push to `main`
-
-**Plugin (Creator Store)**:
-1. Build with Rojo
-2. Upload to Roblox Creator Store
-3. Submit for review
+**[→ See Cost Analysis Breakdown](https://sergeykudelin.com/lux/cost-optimization)** (token math)
 
 ---
 
-## 🤝 Contributing
+## Performance
 
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+| Operation | Typical Latency | Source |
+|-----------|-----------------|--------|
+| Polling interval | 100ms | `task.wait(0.1)` in pollLoop |
+| Tool execution (round-trip) | 100-300ms | Polling + network latency |
+| Tool timeout | 30s max | `settings.poll_timeout = 30` |
+| LLM response | 1-5s | Model-dependent (OpenRouter) |
+| Action execution | <50ms per action | Local Lua execution |
+| **Full request cycle** | **2-10s** | Depends on tool calls needed |
 
-### Areas for Contribution
-- [ ] Add comprehensive test suite (pytest)
-- [ ] Support for additional LLM providers (Anthropic, OpenAI)
-- [ ] Plugin UI improvements
-- [ ] Support for more Roblox instance types
-- [ ] Diff view for script modifications
-- [ ] Undo/redo functionality
-- [ ] Conversation export/import
+**Provable:** All timing values come from actual `config.py` and `Main.server.lua` code.
 
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+**[→ See Performance Benchmarks](https://sergeykudelin.com/lux/performance)** (real traces)
 
 ---
 
-## 🙏 Acknowledgments
+## Security & Privacy
 
-- **LangChain/LangGraph**: Excellent agent orchestration framework
-- **FastAPI**: Modern Python web framework
-- **OpenRouter**: Multi-model API gateway
-- **Roblox Community**: Inspiration and feedback
+### What We Store
+- ✓ Conversation history (in-memory, session-scoped)
+- ✓ Project structure (in-memory, session-scoped)
+- ✓ Tool response cache (in-memory, session-scoped)
+
+### What We NEVER Store
+- ✗ API keys (processed, never persisted)
+- ✗ User identities
+- ✗ Project content after session ends
+- ✗ Conversation logs to disk
+
+### Data Lifecycle
+1. Created: On first request
+2. Held: In memory only (no database)
+3. Expired: After 1 hour of inactivity (`settings.session_ttl = 3600`)
+4. Deleted: Permanently removed from memory
 
 ---
 
-## 📞 Contact
+## Metrics
 
-**GitHub**: [@Seryozh](https://github.com/Seryozh)
-**Repository**: [github.com/Seryozh/lux-agentic-ai](https://github.com/Seryozh/lux-agentic-ai)
+| Metric | Value | Source |
+|--------|-------|--------|
+| Active Installations | **1,500+** | Roblox Creator Store |
+| Backend Lines of Code | 813 | Python/FastAPI |
+| Plugin Lines of Code | 1,424 | Lua/Roblox |
+| Supported Action Types | 8 | `models.py` Action enum |
+| Available Tools | 4 | search, list, metadata, full_script |
+| Session TTL | 1 hour | `config.py` line 10 |
+| Tool Timeout | 30 seconds | `config.py` line 9 |
+| Cleanup Interval | 5 minutes | `config.py` line 11 |
+| Token Savings | **~90%** | 65k → 5.5k per request |
 
 ---
 
-<div align="center">
+## Design Decisions
 
-**⭐ If you find this project interesting, please consider giving it a star! ⭐**
+### Why Polling Instead of WebSockets?
 
-Made with ❤️ for the Roblox developer community
+| Aspect | Polling Bridge | WebSocket |
+|--------|----------------|-----------|
+| Roblox compatibility | ✓ Works | ✗ Not supported |
+| Latency | ~100ms intervals | Real-time |
+| Implementation | Complex (event sync) | Simple |
 
-</div>
+**Verdict:** WebSocket would be ideal, but Roblox constraints require polling.
+
+### Why Single Model Instead of Orchestrator + Worker?
+
+| Aspect | Single Model | Multi-Model |
+|--------|--------------|-------------|
+| Latency | Lower (1 call) | Higher (2+ calls) |
+| Cost | Lower | Higher |
+| Complexity | Simpler | More complex |
+
+**Verdict:** Modern models (Gemini Flash, Claude) handle both planning and execution well. Tool system provides specialization without overhead.
+
+### Why Continuous Execution Instead of Step-by-Step?
+
+| Aspect | Step-by-Step | Continuous |
+|--------|--------------|------------|
+| User clicks | Many | One |
+| UX friction | High | Low |
+| Context usage | Lower | Higher |
+
+**Verdict:** Continuous execution matches user mental model ("do this task") and reduces interaction overhead.
+
+---
+
+## Future Roadmap
+
+### Potential Enhancements
+- **Streaming Responses**: Progressive action display as LLM generates
+- **Multi-File Operations**: Coordinated changes with rollback capability
+- **Learning from Corrections**: Track user edits to improve future suggestions
+- **Collaborative Features**: Multiple users in same session
+
+### Scalability Roadmap
+```
+CURRENT
+├── Single backend instance
+├── In-memory sessions
+└── Direct LLM calls
+
+PHASE 2
+├── Redis session store
+├── Multiple backend instances
+└── Load balancer
+
+PHASE 3
+├── Distributed caching
+├── LLM response caching
+└── Geographic distribution
+```
+
+---
+
+## Contributing
+
+This is a solo project, but feedback is welcome!
+
+1. Open an issue for bugs or feature requests
+2. Include Roblox Studio version and LLM model used
+3. Provide example prompts that failed
+
+---
+
+## License
+
+MIT License - See LICENSE file for details
+
+---
+
+## Links
+
+- **Roblox Creator Store**: [Install Lux](https://create.roblox.com/store/asset/)
+- **Technical Architecture**: [Full Documentation](./lux-architecture.md)
+- **Author**: [Sergey Kudelin](https://sergeykudelin.com)
+- **GitHub**: [github.com/Seryozh](https://github.com/Seryozh)
+- **Interactive Demos**: [sergeykudelin.com/lux](https://sergeykudelin.com/lux)
+
+---
+
+**Built with:** Python • FastAPI • LangGraph • LangChain • OpenRouter • Railway
+
+**Special thanks** to the 1,500+ developers using Lux in production.
